@@ -1,0 +1,29 @@
+# ---- Build output ----
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+
+# ---- Reverse-engineering material (DO NOT DISTRIBUTE) ----
+# Decompiled TaleWorlds assemblies, RBM source, and scraped API docs.
+# Kept local for interoperability work only — never committed.
+tools/dump/
+
+# ---- Local research / scraped reference pages (not part of the mod) ----
+*.htm
+*.html
+/carrhae.txt
+/schiltron.txt
+/sq.txt
+/gh.txt
+/*.htm
+/*.html
+
+# ---- Scratch files ----
+tools/_wp.csx
+
+# ---- Local tooling / editor ----
+.claude/
+.idea/
+*.swp

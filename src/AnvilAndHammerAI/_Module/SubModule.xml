@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Module>
+  <Name value="Anvil &amp; Hammer - Cavalry &amp; Morale Battle AI" />
+  <Id value="AnvilAndHammerAI" />
+  <Version value="v1.0.0" />
+  <DefaultModule value="false" />
+  <ModuleCategory value="Singleplayer" />
+  <ModuleType value="Community" />
+  <Official value="false" />
+
+  <DependedModules>
+    <DependedModule Id="Native" DependentVersion="v1.3.15" Optional="false" />
+    <DependedModule Id="SandBoxCore" DependentVersion="v1.3.15" Optional="false" />
+    <DependedModule Id="Sandbox" DependentVersion="v1.3.15" Optional="false" />
+    <DependedModule Id="StoryMode" DependentVersion="v1.3.15" Optional="false" />
+    <DependedModule Id="CustomBattle" DependentVersion="v1.3.15" Optional="false" />
+    <DependedModule Id="Bannerlord.Harmony" Optional="false" />
+    <DependedModule Id="Bannerlord.ButterLib" Optional="false" />
+    <DependedModule Id="Bannerlord.UIExtenderEx" Optional="false" />
+    <DependedModule Id="Bannerlord.MBOptionScreen" Optional="false" />
+    <DependedModule Id="RBM" DependentVersion="v4.2.20" Optional="false" />
+  </DependedModules>
+
+  <!--
+    载入顺序:Harmony / ButterLib / MCM / RBM 都必须先于本模块载入,
+    这样我们的 Harmony 后置补丁才会叠在 RBM(com.rbmai)之上。
+  -->
+  <DependedModuleMetadatas>
+    <DependedModuleMetadata id="Bannerlord.Harmony" order="LoadBeforeThis" />
+    <DependedModuleMetadata id="Bannerlord.ButterLib" order="LoadBeforeThis" />
+    <DependedModuleMetadata id="Bannerlord.UIExtenderEx" order="LoadBeforeThis" />
+    <DependedModuleMetadata id="Bannerlord.MBOptionScreen" order="LoadBeforeThis" />
+    <DependedModuleMetadata id="RBM" order="LoadBeforeThis" />
+  </DependedModuleMetadatas>
+
+  <SubModules>
+    <SubModule>
+      <Name value="AnvilAndHammerAI" />
+      <DLLName value="AnvilAndHammerAI.dll" />
+      <SubModuleClassType value="AnvilAndHammerAI.SubModule" />
+      <Tags>
+        <Tag key="DedicatedServerType" value="none" />
+        <Tag key="IsNoRenderModeElement" value="false" />
+      </Tags>
+    </SubModule>
+  </SubModules>
+
+  <!-- 注册自有 GameText:把 4 个自有行为的"军士指令行为文本"按 variation=类型名 注册到
+       str_formation_ai_sergeant_instruction_behavior_text 下,根治引擎/RTS Camera 直接按类型名查文本时的
+       "text with id ... doesn't exist" 报错(ModuleData/AnvilHammer_module_strings.xml)。语言表(Languages/)由引擎自动扫描,无需在此注册。 -->
+  <Xmls>
+    <XmlNode>
+      <XmlName id="GameText" path="AnvilHammer_module_strings" />
+    </XmlNode>
+  </Xmls>
+
+</Module>

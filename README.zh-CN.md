@@ -1,0 +1,130 @@
+# 砧与锤 —— 骑兵与士气战场 AI（Anvil & Hammer）
+
+> **语言:** 简体中文 · [English](README.md)
+
+![Game](https://img.shields.io/badge/骑砍2-v1.3.15-blue)
+![Requires RBM](https://img.shields.io/badge/依赖-RBM%20v4.2.20-red)
+![Type](https://img.shields.io/badge/单人-野战-green)
+
+一个**《骑马与砍杀2:霸主》单人战场 AI** mod,为双方军队补上原版与 RBM 都缺失的两样东西:**协同的"砧与锤"骑兵战术**,以及**编队级士气**——整支编队会一起崩溃,而不是一个个掉血。
+
+它构建在 **[RBM(真实战斗 Mod)](https://www.nexusmods.com/mountandblade2bannerlord/mods/2210)** 之上,而非替代它——RBM 的战斗与 AI 仍在底层运行,本 mod 只是把骑兵协同与士气叠加在其之上。
+
+---
+
+## 特性
+
+- **协同骑兵,而非无脑冲锋。** 步兵"砧"钉住敌方战线;你的骑兵"锤"被攥在手里,直到时机成熟,再投向**最接近崩溃**的那支敌方编队的侧翼与背后。
+- **它会挑目标。** mod 读取整条敌方战线,找出最薄弱或最暴露的编队作为**突破口**,把合围对准那里——而不是所有人一窝蜂冲向最近的一坨敌人。
+- **七个职能,一套计划。** 每名士兵被归入七支协同编队之一——主步兵、包抄步兵、弓手、骑射、左/右轻骑、重骑——各司其职。
+- **编队级士气。** 编队不再只是一个个掉人;在持续压力下,整支编队会累积震慑并**一起溃逃**——承受伤亡、被合围、目睹友邻溃散、顶着箭雨、或面对骑兵冲锋。**兵种等级越高,扛得越久。**
+- **编队会对威胁做出反应。** 被打个措手不及时,编队会立盾墙据守、后撤、或反冲锋,而不是站着挨打送死。
+- **方向很重要。** 命中侧翼与背后造成更高伤害,每个职能有各自调校的移动速度,重骑兵冲锋时会直接撞穿敌阵。
+- **士气一目了然。** 长按 **Alt**,每支编队头顶的圆形兵种图标会按**剩余士气**比例填充其阵营色,已失去的部分变为深灰。可选项支持**全程显示**编队标记,无需长按 Alt。
+- **敌我双方,或仅自己。** 默认敌方 AI 也使用同一套"大脑",战斗保持对称;一个选项可将骑兵/指挥层限制为仅作用于你的军队。(士气始终对双方生效。)
+- **一切皆可调**,全部在游戏内的 Mod 选项(MCM)菜单里。
+
+---
+
+## 依赖
+
+请先安装以下全部内容,均为**硬依赖**:
+
+| 依赖 | 说明 |
+|---|---|
+| **《骑马与砍杀2:霸主》** | 基于 **v1.3.15** 构建与测试 |
+| **RBM —— 真实战斗 Mod** | **v4.2.20** —— 硬依赖,本 mod 叠加于其之上 |
+| **Harmony**(`Bannerlord.Harmony`) | 运行时补丁 |
+| **ButterLib** | 公共工具库 |
+| **UIExtenderEx** | 驱动编队标记上的士气显示 |
+| **MCM —— Mod 配置菜单**(`Bannerlord.MBOptionScreen`) | 游戏内设置 |
+
+### 载入顺序
+
+依赖必须**先于**本 mod 载入,这样本 mod 的补丁才能叠在 RBM 之上:
+
+```
+Harmony → ButterLib → UIExtenderEx → MCM → RBM → 砧与锤
+```
+
+---
+
+## 安装
+
+1. 安装上面列出的全部依赖。
+2. 将 `AnvilAndHammerAI` 文件夹放入:
+   `…\Mount & Blade II Bannerlord\Modules\`
+3. 启动游戏,在启动器的 **Mods** 标签页勾选 **Anvil & Hammer - Cavalry & Morale Battle AI**,并确认上面的载入顺序。
+4. 开打。mod 会在**单人野战**(自定义战斗与战役野外遭遇战)中自动激活。
+
+---
+
+## 兼容性与存档
+
+- **必须装 RBM。** 本 mod 的补丁刻意采用"后置补丁",只在 RBM 算出的最终值上做乘法;没有 RBM 将无法正确载入。
+- **存档安全。** 本 mod 不写入任何自定义存档数据,只在战斗中运行。可在战役中途随时添加或移除,不会损坏存档。
+- **作用范围。** 仅单人野战。攻城及其他任务类型不在目标范围内,mod 不会介入。
+
+---
+
+## 配置(MCM)
+
+游戏内打开 **选项 → Mod 选项 → Anvil & Hammer**。设置分组如下:
+
+- **常规(General)** —— 总开关,以及作用范围(驱动*整场战斗* 还是 *仅我方军队*)。
+- **战场显示(Battle Display)** —— 在编队标记图标上显示士气;无需长按 Alt 即可全程显示标记。
+- **士气(Morale)** —— 溃逃阈值、累积压力的消退速度、以及启用哪些压力来源(如远程火力、骑兵冲锋震慑)。
+- **伤害与速度(Damage & Speed)** —— 方向性(侧翼/背后)伤害倍率,以及各职能的移动速度倍率。
+
+设置实时生效;大多数选项无需重启(UI/本地化文本改动需要重启游戏)。
+
+---
+
+## 工作原理
+
+> 完整设计说明见:[`docs/adr/0011-cavalry-command-scheduler-and-auto-formation.md`](docs/adr/0011-cavalry-command-scheduler-and-auto-formation.md)
+
+本 mod 是一个**"权重设定器",而非状态机**。它从不用 `SetControlledByAI` 夺取编队控制权;而是每 0.5 秒重新施加它想要的编队行为权重,**软压制**原版/RBM 的战术选择。RBM 仍在底层运行——本 mod 只是每一拍把自己选中的行为重新压在最上面。
+
+三段式流水线:
+
+1. **自动编队** —— 把每名士兵重新分配进七个职能编队之一。
+2. **战术大脑** —— 一次纯空间运算:把每支敌方编队建模为带朝向的形状,选出突破口,计算侧翼/背后的进攻点,并判定各个闸门:*砧是否咬住敌人?*、*是否释放锤?*、*是否需要掩护威胁?*——产出一份作战计划。
+3. **指令调度器** —— 每 0.5 秒按计划重新施加行为权重,外加一层威胁反应(据守/后撤/反冲锋),以及玩家手动下令时的退让机制。
+
+士气是一个独立、基础性的子系统:每支编队有一个*震慑池*,持续吸收来自伤亡、合围、友邻溃逃、远程火力、骑兵冲锋的压力;当它越过随兵种等级缩放的阈值时,整支编队溃逃。
+
+---
+
+## 从源码构建
+
+需要 .NET SDK,以及本机已安装游戏并配齐上述依赖。
+
+```bash
+dotnet build src/AnvilAndHammerAI/AnvilAndHammerAI.csproj -c Release -v minimal
+```
+
+- 所有 游戏/RBM/Harmony 引用都通过 [`src/Directory.Build.props`](src/Directory.Build.props) 里的 `BannerlordGameDir` 锚定(默认 `D:\SteamLibrary\steamapps\common\Mount & Blade II Bannerlord`)。若游戏装在别处,只需覆盖一次:
+  ```bash
+  dotnet build … -p:BannerlordGameDir="<你的游戏路径>"
+  ```
+- 构建成功后,后置步骤会把 DLL 与 `_Module/SubModule.xml` 直接复制进 `…\Modules\AnvilAndHammerAI`,所以**构建即部署**。
+
+没有单元测试——这是战场 AI mod。验证方式:先构建,再到自定义战斗或战役野战中实测,并查看日志
+`Documents\Mount and Blade II Bannerlord\AnvilAndHammerAI.log`。
+
+---
+
+## 致谢
+
+- **RBM —— 真实战斗 Mod** 团队,本 mod 构建于其战斗/AI 重制之上。
+- **BUTR**([Bannerlord 非官方工具与资源](https://github.com/BUTR))提供的 Harmony、ButterLib、UIExtenderEx 与 MCM。
+- 战术灵感源自历史上的**"砧与锤"**学说(亚历山大的伙友骑兵、汉尼拔的坎尼会战、帕提亚人的卡莱之战)。
+
+---
+
+## 许可
+
+以 [MIT 许可证](LICENSE)发布。
+
+本 mod 为粉丝制作的非商业作品,**与 TaleWorlds Entertainment 无任何隶属或背书关系**。《Mount & Blade II: Bannerlord》是 TaleWorlds Entertainment 的商标。本仓库不分发任何游戏素材或反编译的引擎代码。

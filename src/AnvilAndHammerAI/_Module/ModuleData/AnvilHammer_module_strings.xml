@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  GameText 注册(经 SubModule.xml 的 <Xmls><XmlName id="GameText" path="AnvilHammer_module_strings"/> 加载)。
+  这里把 4 个自有 BehaviorComponent 的"军士指令行为文本"按 variation = 类型名 注册到引擎内置 id
+  str_formation_ai_sergeant_instruction_behavior_text 下 —— 引擎/RTS Camera 会用 GameTexts.FindText(该id, 行为类型名)
+  直接查文本(绕过 GetBehaviorString 重写),没有对应条目就报 "text with id ... doesn't exist"。注册后该报错根治。
+  text 里的 {=键} 走 Languages/ 下的英中本地化表翻译。
+-->
+<strings>
+  <string id="str_formation_ai_sergeant_instruction_behavior_text.FlankChargeBehavior" text="{=AnvilHammer_behavior_flank_charge}Flanking Strike" />
+  <string id="str_formation_ai_sergeant_instruction_behavior_text.HorseArcherKiteBehavior" text="{=AnvilHammer_behavior_horse_archer_kite}Cavalry Skirmish" />
+  <string id="str_formation_ai_sergeant_instruction_behavior_text.ReserveStagingBehavior" text="{=AnvilHammer_behavior_reserve_staging}Reserve Staging" />
+  <string id="str_formation_ai_sergeant_instruction_behavior_text.ThreatReactionBehavior" text="{=AnvilHammer_reaction_default}Respond" />
+</strings>

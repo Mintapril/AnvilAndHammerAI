@@ -1,0 +1,107 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>AnvilAndHammerAI</AssemblyName>
+    <RootNamespace>AnvilAndHammerAI</RootNamespace>
+    <Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
+    <Version>1.0.0</Version>
+    <Deterministic>true</Deterministic>
+    <!-- 输出直接落在 bin\$(Configuration)\,不追加 net472 子目录,方便 post-build 拷贝 -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- 我们自己不带任何第三方运行时 DLL;游戏/依赖模块在运行时提供 -->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <!-- 仅编译期需要的 NuGet 包(不进运行时输出) -->
+  <ItemGroup>
+    <!-- 没装 VS,SDK-only 构建 net472 需要这个引用程序集包 -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <!-- MCM 设置 API,仅编译;运行时用玩家已装的 MBOptionScreen 模块 -->
+    <PackageReference Include="Bannerlord.MCM" Version="5.11.4" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Harmony:引用本机那份 0Harmony,保证编译期身份 == 运行时身份(2.4.2.225) -->
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>$(HarmonyBinDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- TaleWorlds 原版程序集:本机 v1.3.15,仅编译,绝不拷贝到输出 -->
+  <ItemGroup>
+    <Reference Include="TaleWorlds.DotNet">
+      <HintPath>$(GameBinDir)\TaleWorlds.DotNet.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.Core">
+      <HintPath>$(GameBinDir)\TaleWorlds.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.Library">
+      <HintPath>$(GameBinDir)\TaleWorlds.Library.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.Engine">
+      <HintPath>$(GameBinDir)\TaleWorlds.Engine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.ObjectSystem">
+      <HintPath>$(GameBinDir)\TaleWorlds.ObjectSystem.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.Localization">
+      <HintPath>$(GameBinDir)\TaleWorlds.Localization.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.InputSystem">
+      <HintPath>$(GameBinDir)\TaleWorlds.InputSystem.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.MountAndBlade">
+      <HintPath>$(GameBinDir)\TaleWorlds.MountAndBlade.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- 编队标记 VM(MissionFormationMarkerVM / MissionFormationMarkerTargetVM):士气条 mixin + 常显补丁所需,仅编译 -->
+    <Reference Include="TaleWorlds.MountAndBlade.ViewModelCollection">
+      <HintPath>$(GameBinDir)\TaleWorlds.MountAndBlade.ViewModelCollection.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- UIExtenderEx:编队标记士气条的 prefab 注入 + VM mixin 框架。引用本机模块那份,仅编译;运行时用玩家已装的 Bannerlord.UIExtenderEx 模块(硬依赖见 SubModule.xml) -->
+  <ItemGroup>
+    <Reference Include="Bannerlord.UIExtenderEx">
+      <HintPath>$(ModulesDir)\Bannerlord.UIExtenderEx\bin\Win64_Shipping_Client\Bannerlord.UIExtenderEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!--
+    RBM(RBMAI / RBMCombat / RBMConfig)刻意不引用 —— 全部走反射(AccessTools.TypeByName)。
+    见 Cavalry-AI-RBM-Map.md §5.1:RBM 内部类多在全局命名空间/非稳定 API,反射接缝避免脆耦合,
+    且让程序集在 RBM 缺席时仍可加载(硬依赖在 SubModule.xml 层保证)。
+  -->
+
+  <!-- 构建后部署到本机 Modules\AnvilAndHammerAI -->
+  <Target Name="DeployModule" AfterTargets="Build">
+    <PropertyGroup>
+      <ModuleOut>$(ModulesDir)\AnvilAndHammerAI</ModuleOut>
+      <ModuleBinOut>$(ModuleOut)\bin\Win64_Shipping_Client</ModuleBinOut>
+    </PropertyGroup>
+    <MakeDir Directories="$(ModuleBinOut)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModuleBinOut)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).pdb" DestinationFolder="$(ModuleBinOut)" Condition="Exists('$(TargetDir)$(AssemblyName).pdb')" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\_Module\SubModule.xml" DestinationFolder="$(ModuleOut)" SkipUnchangedFiles="false" />
+    <!-- 递归拷贝整个 _Module\ModuleData(本地化语言表 + GameText module_strings)到游戏模块目录,保持子目录结构(含 Languages\CNs)。 -->
+    <ItemGroup>
+      <ModuleDataFiles Include="$(MSBuildProjectDirectory)\_Module\ModuleData\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ModuleDataFiles)" DestinationFiles="@(ModuleDataFiles-&gt;'$(ModuleOut)\ModuleData\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="false" />
+    <Message Importance="high" Text="[A&amp;H] 已部署到 $(ModuleOut)" />
+  </Target>
+
+</Project>

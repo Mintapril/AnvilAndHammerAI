@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<base xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" type="string">
+  <tags>
+    <tag language="English" />
+  </tags>
+  <strings>
+    <!-- MCM: display name + group names -->
+    <string id="AnvilHammer_mod_display_name" text="Anvil &amp; Hammer - Cavalry &amp; Morale Battle AI" />
+    <string id="AnvilHammer_group_general" text="General" />
+    <string id="AnvilHammer_group_battle_ui" text="Battle Display" />
+    <string id="AnvilHammer_group_rout_rally" text="Rout &amp; Rally" />
+    <string id="AnvilHammer_group_ratchet" text="Fracture on Repeated Routs" />
+    <string id="AnvilHammer_group_safety" text="Defeat Prevention" />
+    <string id="AnvilHammer_group_casualty" text="Casualty Distribution" />
+    <string id="AnvilHammer_group_speed" text="Formation Speed" />
+    <string id="AnvilHammer_group_morale" text="Mass Rout (Morale)" />
+
+    <!-- MCM: General -->
+    <string id="AnvilHammer_enabled" text="Enable Mod" />
+    <string id="AnvilHammer_enabled_hint" text="Master toggle. When disabled, this mod no longer changes any battle behavior." />
+    <string id="AnvilHammer_debug_logging" text="Write Diagnostic Log" />
+    <string id="AnvilHammer_debug_logging_hint" text="Write detailed runtime info to the log file for troubleshooting. Usually keep this off." />
+    <string id="AnvilHammer_player_army_only" text="Affect Only My Army" />
+    <string id="AnvilHammer_player_army_only_hint" text="Command only your army; enemy forces fall back to vanilla/RBM. The one exception is formation-level morale, which always affects both sides. Default off (both sides affected)." />
+    <string id="AnvilHammer_auto_formation" text="Auto Formation (Experimental)" />
+    <string id="AnvilHammer_auto_formation_hint" text="Organize the army into 7 role formations (main inf / flank inf / archers / horse archers / left light cav / right light cav / heavy cav) as the base for unified command. Default on." />
+    <string id="AnvilHammer_command_scheduler" text="Unified Battle Command (Experimental)" />
+    <string id="AnvilHammer_command_scheduler_hint" text="A unified commander directs each formation to run anvil-and-hammer tactics (infantry hold, archer/horse-archer skirmish, light cavalry screen/flank, timed heavy cavalry charge). Requires Auto Formation. Default on." />
+    <string id="AnvilHammer_threat_reactions" text="Threat Reactions (Experimental)" />
+    <string id="AnvilHammer_threat_reactions_hint" text="React to unexpected threats on their own: infantry form a shield wall against cavalry, archers/horse archers fall back, reserve cavalry wheel about to counter-charge. Requires Unified Battle Command. Default on." />
+    <string id="AnvilHammer_respect_player_orders" text="Yield Formations You Command" />
+    <string id="AnvilHammer_respect_player_orders_hint" text="When on, formations you command yourself are not overridden by unified command. Keep this off when running RTS Camera, or formations it takes over may stand idle. Default off (the mod runs tactics throughout)." />
+    <string id="AnvilHammer_battle_event_log" text="Battle Event Toasts" />
+    <string id="AnvilHammer_battle_event_log_hint" text="Show key battle events in the lower-left (heavy cavalry charge, light cavalry cover/flank, infantry outflank, rout/rally, etc.) to help you read the AI. Default on." />
+
+    <!-- MCM: Battle Display -->
+    <string id="AnvilHammer_show_morale_bars" text="Show Morale on Formation Markers" />
+    <string id="AnvilHammer_show_morale_bars_hint" text="Fill each formation's troop-type icon with its team colour in proportion to its morale; the lost part turns dark grey (hold Alt to see the markers, or turn on Always Show Formation Markers below). Shown for both your formations and the enemy's, and drains as a formation nears a mass rout. Default on." />
+    <string id="AnvilHammer_always_show_markers" text="Always Show Formation Markers" />
+    <string id="AnvilHammer_always_show_markers_hint" text="Keep the formation markers (the troop-type icons above each formation) visible at all times, without holding Alt. Default off." />
+
+    <!-- MCM: Rout &amp; Rally -->
+    <string id="AnvilHammer_rally_delay" text="Rally Delay (sec)" />
+    <string id="AnvilHammer_rally_delay_hint" text="How long after a formation routs before it tries to steady and rally. Too short = pulled back the instant it routs; too long = can never recover. Default 8." />
+    <string id="AnvilHammer_rally_morale_floor" text="Rally Morale" />
+    <string id="AnvilHammer_rally_morale_floor_hint" text="The morale a formation is restored to when it rallies. Higher = steadier and less likely to rout again at once. Default 25." />
+
+    <!-- MCM: Fracture on Repeated Routs -->
+    <string id="AnvilHammer_ratchet_enabled" text="Weaker After Repeated Routs" />
+    <string id="AnvilHammer_ratchet_enabled_hint" text="Each rout permanently lowers the morale a unit can later recover to (it grows brittle); past a point it collapses for good and no longer rallies." />
+    <string id="AnvilHammer_ratchet_decay" text="Fragility Per Rout" />
+    <string id="AnvilHammer_ratchet_decay_hint" text="Each rout multiplies the morale-recovery cap by this factor (lower = collapses for good sooner). Set to 1 for no fragility. Default 0.55." />
+
+    <!-- MCM: Defeat Prevention -->
+    <string id="AnvilHammer_safety_enabled" text="Prevent Premature Defeat" />
+    <string id="AnvilHammer_safety_enabled_hint" text="When your troops rout temporarily, stop the game from declaring defeat too early: routers that can still recover do not leave the field at once. Fully collapsed units and the enemy are not protected." />
+
+    <!-- MCM: Casualty Distribution -->
+    <string id="AnvilHammer_casualty_enabled" text="Concentrate Casualties in Pursuit" />
+    <string id="AnvilHammer_casualty_enabled_hint" text="Make casualties fall more in the pursuit and less in the head-on fight: hits on fleeing or rear-facing enemies deal more, standing toe-to-toe deals less." />
+    <string id="AnvilHammer_stand_multiplier" text="Head-on Melee Damage Multiplier" />
+    <string id="AnvilHammer_stand_multiplier_hint" text="Damage multiplier when standing toe-to-toe. Lower = slower kills head-on. Default 0.65." />
+    <string id="AnvilHammer_pursuit_multiplier" text="Pursuit Damage Multiplier" />
+    <string id="AnvilHammer_pursuit_multiplier_hint" text="Damage multiplier when hitting a fleeing enemy. Higher = more thorough pursuit kills. Default 1.7." />
+    <string id="AnvilHammer_rear_multiplier" text="Rear Attack Damage Multiplier" />
+    <string id="AnvilHammer_rear_multiplier_hint" text="Damage multiplier when hitting a (non-fleeing) enemy from behind. Default 1.5." />
+    <string id="AnvilHammer_pursuit_guaranteed_kill" text="Pursuit One-Shot Kill (Aggressive)" />
+    <string id="AnvilHammer_pursuit_guaranteed_kill_hint" text="Hits on a fleeing enemy deal lethal damage outright (one-shot). Aggressive; off by default." />
+    <string id="AnvilHammer_side_multiplier" text="Side Attack Damage Multiplier" />
+    <string id="AnvilHammer_side_multiplier_hint" text="Damage multiplier when hitting a (non-fleeing) enemy from the side. Direction is judged by the enemy formation's facing. Default 1.0 (no change)." />
+    <string id="AnvilHammer_flank_rear_multiplier" text="Flank/Cavalry Rear Damage Multiplier" />
+    <string id="AnvilHammer_flank_rear_multiplier_hint" text="Damage multiplier when flank infantry, light cavalry or heavy cavalry strike an enemy formation from behind (replaces the generic rear multiplier; these roles excel at getting around). Default 1.8." />
+    <string id="AnvilHammer_flank_side_multiplier" text="Flank/Cavalry Side Damage Multiplier" />
+    <string id="AnvilHammer_flank_side_multiplier_hint" text="Damage multiplier when flank infantry, light cavalry or heavy cavalry strike an enemy formation from the side (replaces the generic side multiplier). Default 1.3." />
+    <string id="AnvilHammer_charge_momentum_enabled" text="Scale Cavalry Impact by Mount Tier" />
+    <string id="AnvilHammer_charge_momentum_enabled_hint" text="High-speed cavalry collision (impact) damage scales with mount tier: light cavalry lower, heavy cavalry higher. Multiplied on top of the direction multiplier. Default on." />
+    <string id="AnvilHammer_light_cav_charge_mult" text="Light Cavalry Impact Multiplier" />
+    <string id="AnvilHammer_light_cav_charge_mult_hint" text="Impact damage multiplier for a light cavalry charge. Light cavalry carries less momentum. Default 0.8." />
+    <string id="AnvilHammer_heavy_cav_charge_mult" text="Heavy Cavalry Impact Multiplier" />
+    <string id="AnvilHammer_heavy_cav_charge_mult_hint" text="Impact damage multiplier for a heavy cavalry charge. Heavy cavalry carries great momentum. Default 1.7." />
+    <string id="AnvilHammer_heavy_cav_plow_through" text="Heavy Cavalry Plow Through" />
+    <string id="AnvilHammer_heavy_cav_plow_through_hint" text="A heavy cavalry charge knocks frontal enemies to the ground, keeping momentum to punch through the line (not halted by standing soldiers, less slowdown). Reflects heavy momentum; off, cavalry is more easily stopped after impact. Only your heavy cavalry, and only knocks down enemies. Default on." />
+
+    <!-- MCM: Formation Speed -->
+    <string id="AnvilHammer_formation_speed_enabled" text="Adjust Speed by Formation" />
+    <string id="AnvilHammer_formation_speed_enabled_hint" text="Fine-tune speed by role: flank infantry faster to get around, light cavalry and horse archers faster to maneuver, heavy cavalry a touch slower. Off = vanilla speeds. Default on." />
+    <string id="AnvilHammer_flank_infantry_speed_mult" text="Flank Infantry Speed Multiplier" />
+    <string id="AnvilHammer_flank_infantry_speed_mult_hint" text="Movement-speed multiplier for flank infantry (to get around to the enemy's side/rear). Default 1.25." />
+    <string id="AnvilHammer_light_cav_speed_mult" text="Light Cavalry Speed Multiplier" />
+    <string id="AnvilHammer_light_cav_speed_mult_hint" text="Charge-speed multiplier for light cavalry. Default 1.1." />
+    <string id="AnvilHammer_horse_archer_speed_mult" text="Horse Archer Speed Multiplier" />
+    <string id="AnvilHammer_horse_archer_speed_mult_hint" text="Charge-speed multiplier for horse archers (to help them kite). Default 1.15." />
+    <string id="AnvilHammer_heavy_cav_speed_mult" text="Heavy Cavalry Speed Multiplier" />
+    <string id="AnvilHammer_heavy_cav_speed_mult_hint" text="Charge-speed multiplier for heavy cavalry. Heavy armor moves slower. Default 0.8." />
+
+    <!-- MCM: Mass Rout (Morale) -->
+    <string id="AnvilHammer_pool_rout_threshold" text="Formation Rout Pressure Threshold" />
+    <string id="AnvilHammer_pool_rout_threshold_hint" text="A formation routs as a whole once its pressure exceeds this. Lower = easier mass collapse. Default 30." />
+    <string id="AnvilHammer_pool_decay_per_second" text="Pressure Decay (per sec)" />
+    <string id="AnvilHammer_pool_decay_per_second_hint" text="How much a formation's pressure fades each second. Higher = fades faster, harder to keep it collapsing, recovers sooner after routing. Default 6." />
+    <string id="AnvilHammer_ranged_pressure_enabled" text="Pressure Source: Under Fire" />
+    <string id="AnvilHammer_ranged_pressure_enabled_hint" text="Count being volleyed by arrows and javelins toward rout pressure (shield hits, body hits, and arrows landing nearby all count). Default on." />
+    <string id="AnvilHammer_charge_shock_pressure_enabled" text="Pressure Source: Enemy Cavalry Charge" />
+    <string id="AnvilHammer_charge_shock_pressure_enabled_hint" text="Count enemy cavalry charging in at speed toward rout pressure (closer and faster = more intimidating). Default on." />
+
+    <!-- Behavior names (also registered as sergeant-instruction variations in AnvilHammer_module_strings.xml) -->
+    <string id="AnvilHammer_behavior_flank_charge" text="Flanking Strike" />
+    <string id="AnvilHammer_behavior_horse_archer_kite" text="Cavalry Skirmish" />
+    <string id="AnvilHammer_behavior_reserve_staging" text="Reserve Staging" />
+    <string id="AnvilHammer_reaction_brace" text="Shield Wall" />
+    <string id="AnvilHammer_reaction_fallback" text="Fall Back" />
+    <string id="AnvilHammer_reaction_counter" text="Counter-Charge" />
+    <string id="AnvilHammer_reaction_default" text="Respond" />
+
+    <!-- Battle narrator: role names -->
+    <string id="AnvilHammer_role_infantry" text="infantry" />
+    <string id="AnvilHammer_role_heavy_infantry" text="heavy infantry" />
+    <string id="AnvilHammer_role_archers" text="archers" />
+    <string id="AnvilHammer_role_horse_archers" text="horse archers" />
+    <string id="AnvilHammer_role_light_cavalry" text="light cavalry" />
+    <string id="AnvilHammer_role_cavalry" text="cavalry" />
+    <string id="AnvilHammer_role_heavy_cavalry" text="heavy cavalry" />
+    <string id="AnvilHammer_role_troops" text="troops" />
+
+    <!-- Battle narrator: side labels + rout/rally templates -->
+    <string id="AnvilHammer_side_friendly" text="Our" />
+    <string id="AnvilHammer_side_enemy" text="Enemy" />
+    <string id="AnvilHammer_narrator_rout" text="{SIDE} {ROLE} routed!" />
+    <string id="AnvilHammer_narrator_rally" text="{SIDE} {ROLE} rallied!" />
+
+    <!-- Battle narrator: tactical event toasts -->
+    <string id="AnvilHammer_msg_pursue" text="Enemy routed - light cavalry, pursue!" />
+    <string id="AnvilHammer_msg_main_inf_brace" text="Main infantry forms up against cavalry" />
+    <string id="AnvilHammer_msg_main_inf_joined" text="Main infantry (anvil) has the enemy locked, holding the front" />
+    <string id="AnvilHammer_msg_flank_inf_brace" text="Flank infantry forms up against cavalry" />
+    <string id="AnvilHammer_msg_flank_inf_flanking" text="Flank infantry strikes the enemy's side and rear" />
+    <string id="AnvilHammer_msg_archers_fallback" text="Archers fall back from the cavalry on them" />
+    <string id="AnvilHammer_msg_horse_archers_fallback" text="Horse archers fall back from the cavalry on them" />
+    <string id="AnvilHammer_msg_left_cav_counter" text="Left light cavalry wheels to meet the charging cavalry" />
+    <string id="AnvilHammer_msg_left_cav_cover" text="Left light cavalry rides to cover our infantry" />
+    <string id="AnvilHammer_msg_left_cav_flank" text="Left light cavalry strikes the enemy's left" />
+    <string id="AnvilHammer_msg_right_cav_counter" text="Right light cavalry wheels to meet the charging cavalry" />
+    <string id="AnvilHammer_msg_right_cav_cover" text="Right light cavalry rides to cover our infantry" />
+    <string id="AnvilHammer_msg_right_cav_flank" text="Right light cavalry strikes the enemy's right" />
+    <string id="AnvilHammer_msg_heavy_cav_counter" text="Heavy cavalry wheels to meet the charging cavalry" />
+    <string id="AnvilHammer_msg_heavy_cav_hammer" text="Heavy cavalry (hammer) launches the decisive charge!" />
+  </strings>
+</base>

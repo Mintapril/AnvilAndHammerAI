@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<base xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" type="string">
+  <tags>
+    <tag language="简体中文"/>
+  </tags>
+  <strings>
+    <!-- MCM:显示名 + 分组名 -->
+    <string id="AnvilHammer_mod_display_name" text="铁砧与铁锤 - 骑兵与士气战斗AI" />
+    <string id="AnvilHammer_group_general" text="通用" />
+    <string id="AnvilHammer_group_battle_ui" text="战场显示" />
+    <string id="AnvilHammer_group_rout_rally" text="溃逃与集结" />
+    <string id="AnvilHammer_group_ratchet" text="越打越脆" />
+    <string id="AnvilHammer_group_safety" text="战败判定保护" />
+    <string id="AnvilHammer_group_casualty" text="伤亡分布" />
+    <string id="AnvilHammer_group_speed" text="编队速度" />
+    <string id="AnvilHammer_group_morale" text="成片溃逃" />
+
+    <!-- MCM:通用 -->
+    <string id="AnvilHammer_enabled" text="启用本 Mod" />
+    <string id="AnvilHammer_enabled_hint" text="总开关。关闭后本 Mod 不再改变任何战斗行为。" />
+    <string id="AnvilHammer_debug_logging" text="写入诊断日志" />
+    <string id="AnvilHammer_debug_logging_hint" text="把详细的运行信息写入日志文件,供排查问题用。一般保持关闭。" />
+    <string id="AnvilHammer_player_army_only" text="只影响我方军队" />
+    <string id="AnvilHammer_player_army_only_hint" text="只编排你方军队,敌军交回原版/RBM;唯一例外是编队级士气,对双方始终生效。默认关闭(双方都生效)。" />
+    <string id="AnvilHammer_auto_formation" text="自动编队(实验)" />
+    <string id="AnvilHammer_auto_formation_hint" text="把军队按职责编成 7 队(主步/包抄步/弓/骑射/左轻骑/右轻骑/重骑),为统一指挥打底。默认开启。" />
+    <string id="AnvilHammer_command_scheduler" text="统一战场指挥(实验)" />
+    <string id="AnvilHammer_command_scheduler_hint" text="由统一指挥调度各编队执行砧锤战术(步兵顶、弓骑风筝、轻骑护侧/绕击、择时放重骑)。需先开自动编队。默认开启。" />
+    <string id="AnvilHammer_threat_reactions" text="遇袭自发反应(实验)" />
+    <string id="AnvilHammer_threat_reactions_hint" text="遭遇意外威胁时自发应对:步兵结阵御骑、弓兵骑射后撤、预备骑兵回身迎击。需先开统一战场指挥。默认开启。" />
+    <string id="AnvilHammer_respect_player_orders" text="让出你亲自指挥的编队" />
+    <string id="AnvilHammer_respect_player_orders_hint" text="开启后你亲自指挥的编队不被统一指挥覆盖。与 RTS Camera 同载请保持关闭,否则被它接管的编队可能站着不动。默认关闭(本 Mod 全程跑战术)。" />
+    <string id="AnvilHammer_battle_event_log" text="战场事件提示" />
+    <string id="AnvilHammer_battle_event_log_hint" text="在左下角提示关键战场事件(重骑冲锋、轻骑掩护/绕击、包抄绕后、溃逃/重整等),帮你看懂 AI。默认开启。" />
+
+    <!-- MCM:战场显示 -->
+    <string id="AnvilHammer_show_morale_bars" text="在编队标记上显示士气" />
+    <string id="AnvilHammer_show_morale_bars_hint" text="把每个编队的圆形兵种图标按当前士气以其阵营色填充,失去的部分变深灰(长按 Alt 可见编队标记,或开启下面的“始终显示编队标记”)。敌我编队都显示,编队越接近成片溃逃、灰色越多。默认开启。" />
+    <string id="AnvilHammer_always_show_markers" text="始终显示编队标记" />
+    <string id="AnvilHammer_always_show_markers_hint" text="让编队标记(浮在各编队上方的圆形兵种图标)始终保持显示,无需长按 Alt。默认关闭。" />
+
+    <!-- MCM:溃逃与集结 -->
+    <string id="AnvilHammer_rally_delay" text="集结延迟(秒)" />
+    <string id="AnvilHammer_rally_delay_hint" text="部队溃逃后,过多久才会尝试稳住并重新集结。太短=刚溃逃就被拉回来,太长=溃了就拉不回。默认 8。" />
+    <string id="AnvilHammer_rally_morale_floor" text="集结后士气" />
+    <string id="AnvilHammer_rally_morale_floor_hint" text="部队重新集结时把士气恢复到的目标值。越高越容易稳住、越不容易立刻再次溃逃。默认 25。" />
+
+    <!-- MCM:越打越脆 -->
+    <string id="AnvilHammer_ratchet_enabled" text="反复溃逃后越来越脆弱" />
+    <string id="AnvilHammer_ratchet_enabled_hint" text="每溃逃一次,该单位之后能恢复到的士气上限就永久降低一些(越打越脆);降到一定程度后会彻底崩溃、不再集结。" />
+    <string id="AnvilHammer_ratchet_decay" text="每次溃逃的脆化程度" />
+    <string id="AnvilHammer_ratchet_decay_hint" text="每溃逃一次,士气恢复上限乘以此系数(越小=越快彻底崩溃)。设为 1 则不脆化。默认 0.55。" />
+
+    <!-- MCM:战败判定保护 -->
+    <string id="AnvilHammer_safety_enabled" text="防止暂时溃逃被误判战败" />
+    <string id="AnvilHammer_safety_enabled_hint" text="你方部队暂时溃逃时,防止游戏过早判你战败:还有救的逃兵不会立刻退场。已彻底崩溃者和敌军不受此保护。" />
+
+    <!-- MCM:伤亡分布 -->
+    <string id="AnvilHammer_casualty_enabled" text="把伤亡集中到追击" />
+    <string id="AnvilHammer_casualty_enabled_hint" text="让伤亡更多发生在追击、更少发生在正面对砍:击中逃跑或背对的敌人伤害更高,正面站稳对砍伤害更低。" />
+    <string id="AnvilHammer_stand_multiplier" text="正面对砍伤害倍率" />
+    <string id="AnvilHammer_stand_multiplier_hint" text="正面站稳对砍时的伤害倍率。越低,正面拼杀死得越慢。默认 0.65。" />
+    <string id="AnvilHammer_pursuit_multiplier" text="追击逃兵伤害倍率" />
+    <string id="AnvilHammer_pursuit_multiplier_hint" text="击中正在逃跑的敌人时的伤害倍率。越高,追击歼灭越彻底。默认 1.7。" />
+    <string id="AnvilHammer_rear_multiplier" text="背后攻击伤害倍率" />
+    <string id="AnvilHammer_rear_multiplier_hint" text="从背后击中(未逃跑的)敌人时的伤害倍率。默认 1.5。" />
+    <string id="AnvilHammer_pursuit_guaranteed_kill" text="追击一击必杀(激进)" />
+    <string id="AnvilHammer_pursuit_guaranteed_kill_hint" text="击中逃兵时直接造成致命伤害(一击必杀)。效果激进,默认关闭。" />
+    <string id="AnvilHammer_side_multiplier" text="侧面攻击伤害倍率" />
+    <string id="AnvilHammer_side_multiplier_hint" text="从侧面击中(未逃跑的)敌人时的伤害倍率。方向按敌方所在编队的朝向判定。默认 1.0(无增减)。" />
+    <string id="AnvilHammer_flank_rear_multiplier" text="包抄/骑兵 背袭伤害倍率" />
+    <string id="AnvilHammer_flank_rear_multiplier_hint" text="包抄步兵、轻骑、重骑从敌方编队背后击中时的伤害倍率(取代上面的通用背袭倍率,这几个角色更擅长绕后)。默认 1.8。" />
+    <string id="AnvilHammer_flank_side_multiplier" text="包抄/骑兵 侧袭伤害倍率" />
+    <string id="AnvilHammer_flank_side_multiplier_hint" text="包抄步兵、轻骑、重骑从敌方编队侧面击中时的伤害倍率(取代上面的通用侧面倍率)。默认 1.3。" />
+    <string id="AnvilHammer_charge_momentum_enabled" text="骑兵冲撞按精锐缩放" />
+    <string id="AnvilHammer_charge_momentum_enabled_hint" text="骑兵高速冲撞(撞击)造成的伤害按马匹精锐程度缩放:轻骑撞击伤害较低,重骑撞击伤害更高。该倍率会与上面的方向倍率相乘。默认开启。" />
+    <string id="AnvilHammer_light_cav_charge_mult" text="轻骑冲撞伤害倍率" />
+    <string id="AnvilHammer_light_cav_charge_mult_hint" text="轻骑高速撞击的伤害倍率。轻骑冲撞动量较小,默认 0.8。" />
+    <string id="AnvilHammer_heavy_cav_charge_mult" text="重骑冲撞伤害倍率" />
+    <string id="AnvilHammer_heavy_cav_charge_mult_hint" text="重骑高速撞击的伤害倍率。重骑冲撞动量大,撞击更具毁灭性,默认 1.7。" />
+    <string id="AnvilHammer_heavy_cav_plow_through" text="重骑冲撞穿阵" />
+    <string id="AnvilHammer_heavy_cav_plow_through_hint" text="重骑高速撞击会把正面的敌人撞翻在地,从而保持冲势穿过敌阵(不被站立的士兵挡停、减速更小)。这是重骑大动量的体现;关闭则重骑撞人后更易被挡停。仅对你方重骑、且只撞翻敌人。默认开启。" />
+
+    <!-- MCM:编队速度 -->
+    <string id="AnvilHammer_formation_speed_enabled" text="按编队调整移动速度" />
+    <string id="AnvilHammer_formation_speed_enabled_hint" text="按部队职责微调移动速度:包抄步兵更快以便绕侧,轻骑、骑射更快以便机动,重骑略慢。关闭则所有部队用原版速度。默认开启。" />
+    <string id="AnvilHammer_flank_infantry_speed_mult" text="包抄步兵速度倍率" />
+    <string id="AnvilHammer_flank_infantry_speed_mult_hint" text="包抄步兵的移动速度倍率(便于绕到敌侧后)。默认 1.25。" />
+    <string id="AnvilHammer_light_cav_speed_mult" text="轻骑速度倍率" />
+    <string id="AnvilHammer_light_cav_speed_mult_hint" text="轻骑兵的疾驰速度倍率。默认 1.1。" />
+    <string id="AnvilHammer_horse_archer_speed_mult" text="骑射速度倍率" />
+    <string id="AnvilHammer_horse_archer_speed_mult_hint" text="骑射手的疾驰速度倍率(便于风筝)。默认 1.15。" />
+    <string id="AnvilHammer_heavy_cav_speed_mult" text="重骑速度倍率" />
+    <string id="AnvilHammer_heavy_cav_speed_mult_hint" text="重骑兵的疾驰速度倍率。重甲冲击更慢,默认 0.8。" />
+
+    <!-- MCM:成片溃逃 -->
+    <string id="AnvilHammer_pool_rout_threshold" text="整队溃逃压力阈值" />
+    <string id="AnvilHammer_pool_rout_threshold_hint" text="编队承受的压力超过此值就整队溃逃。越低越容易成片崩溃。默认 30。" />
+    <string id="AnvilHammer_pool_decay_per_second" text="压力消退速度(每秒)" />
+    <string id="AnvilHammer_pool_decay_per_second_hint" text="编队承受的压力每秒消退多少。越大=压力消得越快、越难持续崩溃、溃逃后越快恢复。默认 6。" />
+    <string id="AnvilHammer_ranged_pressure_enabled" text="压力来源:遭受箭雨" />
+    <string id="AnvilHammer_ranged_pressure_enabled_hint" text="把“被弓箭、标枪攒射”计入整队溃逃的压力(命中盾牌、命中士兵,以及落在身边的箭矢都算)。默认开启。" />
+    <string id="AnvilHammer_charge_shock_pressure_enabled" text="压力来源:敌骑冲锋逼近" />
+    <string id="AnvilHammer_charge_shock_pressure_enabled_hint" text="把“敌方骑兵高速冲锋逼近”计入整队溃逃的压力(越近、越快,威慑越强)。默认开启。" />
+
+    <!-- 自有行为名(同时在 AnvilHammer_module_strings.xml 注册为军士指令 variation) -->
+    <string id="AnvilHammer_behavior_flank_charge" text="迂回突击" />
+    <string id="AnvilHammer_behavior_horse_archer_kite" text="游骑风筝" />
+    <string id="AnvilHammer_behavior_reserve_staging" text="预备待命" />
+    <string id="AnvilHammer_reaction_brace" text="结阵御骑" />
+    <string id="AnvilHammer_reaction_fallback" text="后撤脱离" />
+    <string id="AnvilHammer_reaction_counter" text="回身反冲" />
+    <string id="AnvilHammer_reaction_default" text="应敌" />
+
+    <!-- 战场播报:兵种名 -->
+    <string id="AnvilHammer_role_infantry" text="步兵" />
+    <string id="AnvilHammer_role_heavy_infantry" text="重步兵" />
+    <string id="AnvilHammer_role_archers" text="弓兵" />
+    <string id="AnvilHammer_role_horse_archers" text="骑射" />
+    <string id="AnvilHammer_role_light_cavalry" text="轻骑兵" />
+    <string id="AnvilHammer_role_cavalry" text="骑兵" />
+    <string id="AnvilHammer_role_heavy_cavalry" text="重骑兵" />
+    <string id="AnvilHammer_role_troops" text="部队" />
+
+    <!-- 战场播报:阵营标签 + 溃逃/重整模板 -->
+    <string id="AnvilHammer_side_friendly" text="我方" />
+    <string id="AnvilHammer_side_enemy" text="敌军" />
+    <string id="AnvilHammer_narrator_rout" text="{SIDE}{ROLE}溃逃了!" />
+    <string id="AnvilHammer_narrator_rally" text="{SIDE}{ROLE}重整旗鼓" />
+
+    <!-- 战场播报:战术事件提示 -->
+    <string id="AnvilHammer_msg_pursue" text="敌军溃败,轻骑追击!" />
+    <string id="AnvilHammer_msg_main_inf_brace" text="主步兵就地结阵御骑" />
+    <string id="AnvilHammer_msg_main_inf_joined" text="主步兵(砧)已咬住敌阵,正面顶住" />
+    <string id="AnvilHammer_msg_flank_inf_brace" text="包抄步兵就地结阵御骑" />
+    <string id="AnvilHammer_msg_flank_inf_flanking" text="包抄步兵绕击敌侧后" />
+    <string id="AnvilHammer_msg_archers_fallback" text="弓兵后撤脱离贴身骑兵" />
+    <string id="AnvilHammer_msg_horse_archers_fallback" text="骑射后撤脱离贴身骑兵" />
+    <string id="AnvilHammer_msg_left_cav_counter" text="左翼轻骑回身迎击来袭骑兵" />
+    <string id="AnvilHammer_msg_left_cav_cover" text="左翼轻骑驰援掩护我方步兵" />
+    <string id="AnvilHammer_msg_left_cav_flank" text="左翼轻骑绕击敌左翼" />
+    <string id="AnvilHammer_msg_right_cav_counter" text="右翼轻骑回身迎击来袭骑兵" />
+    <string id="AnvilHammer_msg_right_cav_cover" text="右翼轻骑驰援掩护我方步兵" />
+    <string id="AnvilHammer_msg_right_cav_flank" text="右翼轻骑绕击敌右翼" />
+    <string id="AnvilHammer_msg_heavy_cav_counter" text="重骑兵回身迎击来袭骑兵" />
+    <string id="AnvilHammer_msg_heavy_cav_hammer" text="重骑兵(锤)发起决定性冲锋!" />
+  </strings>
+</base>

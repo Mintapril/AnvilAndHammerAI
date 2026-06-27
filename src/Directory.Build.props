@@ -1,0 +1,15 @@
+<Project>
+
+  <!--
+    本机环境锚点 —— 所有引用都钉死在当前安装的版本上(游戏 v1.3.15 / RBM v4.2.20)。
+    如果游戏装在别处,只改 BannerlordGameDir 一处即可;也可在命令行用
+    /p:BannerlordGameDir="..." 覆盖。
+  -->
+  <PropertyGroup>
+    <BannerlordGameDir Condition="'$(BannerlordGameDir)' == ''">D:\SteamLibrary\steamapps\common\Mount &amp; Blade II Bannerlord</BannerlordGameDir>
+    <GameBinDir>$(BannerlordGameDir)\bin\Win64_Shipping_Client</GameBinDir>
+    <ModulesDir>$(BannerlordGameDir)\Modules</ModulesDir>
+    <HarmonyBinDir>$(ModulesDir)\Bannerlord.Harmony\bin\Win64_Shipping_Client</HarmonyBinDir>
+  </PropertyGroup>
+
+</Project>
