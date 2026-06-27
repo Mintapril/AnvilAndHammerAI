@@ -82,7 +82,7 @@ Settings apply live; no restart needed for most options (UI/localization changes
 
 ## How it works
 
-> Full design rationale: [`docs/adr/0011-cavalry-command-scheduler-and-auto-formation.md`](docs/adr/0011-cavalry-command-scheduler-and-auto-formation.md)
+> Full architecture & design doc: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the code-grounded source of truth for how the mod works.
 
 The mod is a **weight-setter, not a state machine.** It never seizes formations with `SetControlledByAI`; instead, every 0.5 s it re-asserts the formation behaviour weights it wants, *soft-suppressing* native/RBM tactic selection. RBM keeps running underneath — this mod just keeps the behaviour it chose on top each tick.
 

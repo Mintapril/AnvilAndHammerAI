@@ -20,7 +20,7 @@ There are no unit tests (it is a battle-AI game mod; see **Verification**). Buil
 - `src/Directory.Build.props` anchors every game/RBM/Harmony reference HintPath to the local install via `BannerlordGameDir` (default `D:\SteamLibrary\steamapps\common\Mount & Blade II Bannerlord`). If the game lives elsewhere, override once: `-p:BannerlordGameDir="<path>"`.
 - A successful build's post-build target copies the DLL + `_Module/SubModule.xml` into `<game>\Modules\AnvilAndHammerAI`, so **building is deploying**.
 
-## Architecture (master doc: `docs/adr/0011-cavalry-command-scheduler-and-auto-formation.md`)
+## Architecture (master doc: `docs/ARCHITECTURE.md` — code-grounded)
 
 The mod is a **weight-setter, not a state machine.** It never calls `SetControlledByAI`; it re-asserts formation behavior weights every 0.5s to *soft-suppress* native/RBM tactic selection. Native/RBM behaviors keep running underneath — the mod just keeps the behavior it wants on top each tick. Internalize this before touching `Formations/`.
 

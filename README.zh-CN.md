@@ -82,7 +82,7 @@ Harmony → ButterLib → UIExtenderEx → MCM → RBM → 砧与锤
 
 ## 工作原理
 
-> 完整设计说明见:[`docs/adr/0011-cavalry-command-scheduler-and-auto-formation.md`](docs/adr/0011-cavalry-command-scheduler-and-auto-formation.md)
+> 完整架构与原理文档:[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) —— 以代码为准、说明 mod 如何运作的权威文档。
 
 本 mod 是一个**"权重设定器",而非状态机**。它从不用 `SetControlledByAI` 夺取编队控制权;而是每 0.5 秒重新施加它想要的编队行为权重,**软压制**原版/RBM 的战术选择。RBM 仍在底层运行——本 mod 只是每一拍把自己选中的行为重新压在最上面。
 
