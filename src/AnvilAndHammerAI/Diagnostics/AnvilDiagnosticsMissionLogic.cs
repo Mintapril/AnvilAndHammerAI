@@ -68,15 +68,16 @@ namespace AnvilAndHammerAI.Diagnostics
                 foreach (Formation f in team.FormationsIncludingEmpty)
                 {
                     if (f.CountOfUnits == 0) continue;
-                    FormationSnapshot snap = _scanner.Scan(f, team);
+                    FormationSnapshot snap = _scanner.Scan(f);
 
-                    float pool = 0f; bool latched = false;
-                    if (_pool != null && _pool.TryGet(f, out var st)) { pool = st.Pool; latched = st.RoutLatched; }
+                    float pool = 0f, floor = 0f, chg = 0f, eff = 0f; bool latched = false;
+                    if (_pool != null && _pool.TryGet(f, out var st))
+                    { pool = st.Pool; floor = st.CasualtyFloor; chg = st.ChargeShock; eff = st.Effective; latched = st.RoutLatched; }
 
                     Log.Info($"[diag] side={team.Side} class={f.FormationIndex} n={snap.Count} " +
                              $"avgMorale={snap.AvgMorale:0.0} routing={snap.RoutingFraction:0.00} " +
                              $"tier={snap.AvgTier:0.0} encSec={snap.OccupiedSectors} " +
-                             $"pool={pool:0.0} latched={latched}");
+                             $"eff={eff:0.0}(pool={pool:0.0} floor={floor:0.0} chg={chg:0.0}) latched={latched}");
                 }
             }
 

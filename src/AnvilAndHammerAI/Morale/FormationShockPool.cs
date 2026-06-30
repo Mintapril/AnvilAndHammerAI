@@ -11,9 +11,16 @@ namespace AnvilAndHammerAI.Morale
     /// </summary>
     public sealed class FormationShockState
     {
-        public float Pool;
+        public float Pool;                // 瞬时情势池(级联+包围+远程,积分+每秒衰减)
+        public float CasualtyFloor;       // 伤亡溃逃压力 = ErosionGain × (自上次重整以来损失的"当前兵力"比);可重整(重整时基准归位 → 归零)
+        public float ChargeShock;         // 冲锋冲击震慑(慢衰减;由编排层每拍从 ChargeImpactSensor 镜像写入)
+        public float CasualtyBaseline;    // 上次重整时的累计伤亡比(再溃以此为基准:再损失"当前兵力"的一截才再溃)
+        public float CasualtyFractionNow; // 本拍累计伤亡比(= 1 − 存活比;供 Decide 重置基准 + 士气条"永不满"上限)
         public bool RoutLatched;          // 越阈令牌:已触发整队溃逃,冷却内不重复触发/不集结
         public float LastRoutTime = -999f;
+
+        /// <summary>有效溃逃压力 = 瞬时情势池 + 伤亡溃逃压力 + 冲锋冲击震慑。决策/士气条/放锤判据统一读此。</summary>
+        public float Effective => Pool + CasualtyFloor + ChargeShock;
 
         public int RatchetLevel;          // C 棘轮(编队级):该编队累计整队溃逃次数;越多集结目标越低
         public bool Bottomed;             // 触底:档数到顶 → 整队不再集结(决定性崩溃)
@@ -33,6 +40,15 @@ namespace AnvilAndHammerAI.Morale
         {
             Pool -= perSecond * dt;
             if (Pool < 0f) Pool = 0f;
+        }
+
+        /// <summary>把崩溃/溃逃状态清回"新战力"(援军重新填充已崩溃编队时用;保留 Prev,Effective 自然归 0)。</summary>
+        public void ResetCollapse()
+        {
+            Pool = 0f; CasualtyFloor = 0f; ChargeShock = 0f;
+            CasualtyBaseline = 0f; CasualtyFractionNow = 0f;
+            RoutLatched = false; LastRoutTime = -999f;
+            RatchetLevel = 0; Bottomed = false;
         }
     }
 

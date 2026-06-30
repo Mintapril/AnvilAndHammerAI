@@ -50,8 +50,9 @@ namespace AnvilAndHammerAI.Combat
             if (!ScopeFilter.Applies(attackInformation.AttackerAgent)) return; // 范围:只玩家军时只玩家出手套用
 
             // 远程命中(箭矢/标枪)不套用本系统的方向/追击/冲撞缩放——这些是为近战侧/背袭设计的;
-            // 套到箭矢上会把"背对射手的目标"误判成背袭(RearMultiplier),致远程伤害异常偏高。远程一律走原版/RBM 伤害。
-            if (collisionData.IsMissile) return;
+            // 套到箭矢上会把"背对射手的目标"误判成背袭(RearMultiplier),致远程伤害异常偏高。
+            // 仅施加一个统一的远程伤害倍率(MCM「远程武器伤害倍率」,默认 0.8),其余走原版/RBM 伤害。
+            if (collisionData.IsMissile) { __result *= s.RangedDamageMultiplier; return; }
 
             FormationClass? role = AttackerRole(in attackInformation);
             bool flankRole = role.HasValue && IsFlankRole(role.Value);

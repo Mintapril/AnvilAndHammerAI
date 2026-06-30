@@ -13,7 +13,7 @@ namespace AnvilAndHammerAI.Combat
     /// (MissionCombatMechanicsHelper.DecideAgentKnockedDownByBlow,见反编译 76283-76287),但它无参数(全局、不分敌我/角色)。
     ///
     /// 本补丁 Postfix 该静态 helper(所有 stat 模型的 DecideAgentKnockedDownByBlow 都委托到它,反编译 57453 调点):
-    /// **仅对 重骑(HeavyCavalry)对敌的冲撞**强制击倒 → 穿透(减速更小)。受 ScopeFilter + 仅对敌 + ChargeMomentumEnabled 门控。
+    /// **仅对 重骑(HeavyCavalry)对敌的冲撞**强制击倒 → 穿透(减速更小)。受 ScopeFilter + 仅对敌 + HeavyCavPlowThrough 开关门控(独立于伤害侧的 ChargeMomentumEnabled)。
     /// RBM 不 patch 此 helper(只 patch DecideMountReared/Dismounted,见 rbm_src/HorseChanges.cs),无冲突;保持 [HarmonyAfter("com.rbmcombat")]。
     /// 注:伤害提升半项(轻×0.8/重×2)在 DamageSystem 按最终伤害缩放;此处只管减速/穿透。
     /// </summary>
@@ -28,7 +28,7 @@ namespace AnvilAndHammerAI.Combat
             if (!collisionData.IsHorseCharge) return;   // 仅马匹冲撞
 
             var s = AnvilSettings.Instance;
-            if (s == null || !s.Enabled || !s.ChargeMomentumEnabled || !s.HeavyCavPlowThrough) return;
+            if (s == null || !s.Enabled || !s.HeavyCavPlowThrough) return;
             var mission = Mission.Current;
             if (mission == null || !mission.IsFieldBattle) return;
 

@@ -9,7 +9,9 @@
 
 **本 mod 是一个"权重设定器(weight-setter),不是状态机。**
 
-它从不接管编队的逐帧驾驶,而是**每 ~0.5 秒**对每支编队 `ResetBehaviorWeights()` 后按当前作战计划重新 `SetBehaviorWeight<T>()`,以**高频重设权重**的方式"软压制(soft-suppress)"原版/RBM 的战术选择。原版与 RBM 的行为库继续在底层运行——mod 只是每一拍把自己想要的那个行为重新顶到权重最高,让引擎的行为仲裁器选它。
+它从不接管编队的逐帧驾驶,而是**每 ~0.5 秒**对每支编队 `ResetBehaviorWeights()` 后按当前作战计划重新 `SetBehaviorWeight<T>()`,重新把自己想要的那个行为顶到权重最高,让引擎的行为仲裁器选它。原版与 RBM 的行为库继续在底层运行。
+
+> **软压制 → 硬接管(升级)。** 早期单纯靠"高频清零重盖、最后盖章取胜"软压制,两次重设之间存在 ~0.5s 的"夺权窗"。现额外经 `BehaviorWeightOwnerPatch` **硬接管**:拦截 vanilla/RBM 战术层对"**mod 正在驱动的编队**"的 `WeightFactor` 写入(Prefix `return false`),使 mod 成为这些编队的**唯一**权重权威。归属由 `WeightOwnership` 记账(调度器每次 `Drive` 后 `MarkStamped`,`GraceSeconds=1.5s` 宽限窗 > 调度间隔);**未被 mod 接管的编队**(玩家亲控让行 / `ScopeFilter` 外 / 调度关 / 非野战)从不记账,其 vanilla/RBM 权重照常生效,绝不会因无人设权而呆滞。详见 §5。
 
 由此推出三条贯穿全局的设计:
 
@@ -64,12 +66,14 @@
 1. `PatchBootstrapLogic` — 最先,尽早触发补丁安装
 2. `AutoFormationMissionLogic` — 阶段一
 3. `CommandSchedulerMissionLogic(shockPool)` — 阶段二+三,注入共享震慑池
-4. `RangedThreatSensor` — 从第一帧开始计数
-5. `FormationMoraleMissionLogic(shockPool, rangedSensor)` — 士气层
-6. `AnvilDiagnosticsMissionLogic(shockPool)` — 只读诊断(排在士气后,读到同拍数据)
-7. `BattleEndSafetyMissionLogic(shockPool)` — 防过早判负
+4. `RangedThreatSensor` — 从第一帧开始计数(喂"受远程攻击"压力)
+5. `ChargeImpactSensor` — 从第一帧开始计数(监听真实骑兵冲撞命中,喂"冲锋冲击"震慑)
+6. `FormationMoraleMissionLogic(shockPool, rangedSensor, chargeSensor)` — 士气层
+7. `AnvilDiagnosticsMissionLogic(shockPool)` — 只读诊断(排在士气后,读到同拍数据)
+8. `BattleEndSafetyMissionLogic(shockPool)` — 防过早判负
+9. `MissileTrailMissionLogic` — 箭矢轨迹可视化(纯渲染,受 MCM 开关 + 仅 RTS/非操控角色门控)
 
-此处创建**共享** `FormationShockPool` 与 `RangedThreatSensor`,并 `MoraleReadout.Register(shockPool)` 把同一个池交给只读 UI 读出。震慑池的读者:士气层(写)、诊断(只读)、战败安全(读"是否触底")、调度器(读作"放锤"判据)、UI 读出。
+此处创建**共享** `FormationShockPool`、`RangedThreatSensor`、`ChargeImpactSensor`,并 `MoraleReadout.Register(shockPool)` 把同一个池交给只读 UI 读出。震慑池的读者:士气层(写)、诊断(只读)、战败安全(读"是否触底")、调度器(读作"放锤"判据)、UI 读出。
 
 **补丁惰性安装**(`EnsurePatched:102`,幂等):由 `PatchBootstrapLogic` 在 `OnBehaviorInitialize`(AfterStart,`Mission.Current` 已就绪)与每帧 `OnMissionTick`(首帧兜底)触发。守卫:`_patched` 已 true 或 `_harmony==null` 立即返回;`Mission.Current` 为 null 或 `!IsFieldBattle` 返回——**补丁只在就绪的野战里装**。`_patched` 在打补丁**之前**置 true,防重入二次 `PatchAll`。
 
@@ -90,15 +94,15 @@
 | 包抄步兵 | `HeavyInfantry`(4) | 步行近战(与主线按强度配比) | 待命→绕侧/后 |
 | 弓兵 | `Ranged`(1) | 步行远程 | 散射/掩护 |
 | 骑射 | `HorseArcher`(3) | 骑乘 + 默认远程兵种 | 风筝骚扰 |
-| 左轻骑 | `LightCavalry`(5) | 骑乘近战 tier 1–4(+弹尽骑射) | 调度派活(护/侧击/拦截) |
+| 左轻骑 | `LightCavalry`(5) | 骑乘近战 tier 1–5(+弹尽骑射) | 调度派活(护/侧击/拦截) |
 | 右轻骑 | `Cavalry`(2) | 同左,左右对称均衡 | 同左 |
-| 重骑(锤) | `HeavyCavalry`(6) | 骑乘近战 tier ≥5 | 后方预备→择时投锤 |
+| 重骑(锤) | `HeavyCavalry`(6) | 骑乘近战 tier ≥6(仅顶级精英) | 后方预备→择时投锤 |
 
 七个角色各用**不同**的 `FormationClass` 槽,守住"不建第二个 `Cavalry` 槽"的硬约束。
 
 ### 分类与配平
 
-- **粗分类**(`TroopClassifier.Categorize`):`mounted+远程→HorseArcher`;`mounted 近战→ GetBattleTier()≥HeavyCavMinTier(5) 则 HeavyCav,否则 LightCav`;`步行+远程→Archer`;`步行近战→Infantry`。"是否远程"用引擎给的 `Character.DefaultFormationClass`(不在出生时扫弹药)。
+- **粗分类**(`TroopClassifier.Categorize`):`mounted+远程→HorseArcher`;`mounted 近战→ GetBattleTier()≥HeavyCavMinTier(6) 则 HeavyCav,否则 LightCav`;`步行+远程→Archer`;`步行近战→Infantry`。"是否远程"用引擎给的 `Character.DefaultFormationClass`(不在出生时扫弹药)。
 - **左右/主侧配平**用**强度累加值(tally)**,不是 `Formation.CountOfUnits`——因为同一拍内 `a.Formation=target` 不会立刻反映到 `CountOfUnits`,用实时计数会把首批人全塞进一个角色。强度 = `Character.GetBattleTier()` 之和(全 mod 统一度量)。轻骑左右取 tally 较小一侧(并列偏左);主步兵 vs 包抄按 **50:31** 的目标配比贪心填(包抄略小)。
 - **角色粘滞**:首次遇到才 `Resolve`,缓存进 `ConditionalWeakTable`,之后只重申不重算。**唯一**的后续变更:骑射**打光弹药**后单向转入较空的轻骑翼(`MountedOutOfAmmo` 实扫真实弹药),不可逆转回骑射。
 - 玩家英雄 `Agent.Main` 在 `RespectPlayerOrders` 开时免于自动归队。
@@ -162,10 +166,16 @@
 
 `plan.Pursue` 时整队提前分支:只有左右轻骑得 `BehaviorCharge`(2)去追溃兵,其余全 `BehaviorStop`(1)保持队形不乱追。**这是唯一被许可的自由冲锋**。
 
-### 控制权与玩家退让(`Drive()` 这一咽喉点)
+### 溃逃后撤(`HoldRout`)与远程编队级聚焦
+
+- **溃逃后撤**:`Drive` 在设权前先查该编队震慑态——`RoutLatched`(普通溃逃)时改走 `HoldRout`:`ThreatReactionBehavior` 切 `Mode.Rout`(整队背对最近敌编队有序奔退,**面朝撤离方向 = 背部朝敌**,故被追击时按背袭/追击判定吃满溃逃伤害加成),不逐兵 Panic、不脱编(保持成建制,脱火后情势池衰减即可解锁集结)。**仅决定性崩溃(`Bottomed`,棘轮触底)才逐兵 `Panic` 四散**(见 §8)。
+- **远程编队级聚焦索敌**(`ApplyRangedFocus`):弓兵/骑射不再各打各的——对整支编队**逐兵硬锁**:每个 agent `SetTargetAgent(目标编队内活体,轮流分摊)` + `SetAutomaticTargetSelection(false)`(关自动索敌防 vanilla/RBM 改回),实现"整队只打同一支敌编队"。目标 = `plan.Target`(突破口)→ `plan.AnvilTarget` → 无则 `ReleaseRangedFocus` 释放回原生。被骑兵贴脸后撤 / 溃逃(`HoldRout`)时同样释放以便自卫。(`SetTargetFormation` 仅是索敌"偏好",实测不足以禁止分散,故升级为逐兵硬锁。)与 RBM 共存:RBM 只 patch 弹道、不碰索敌。
+
+### 控制权、权重归属与玩家退让(`Drive()` 这一咽喉点)
 
 - **玩家手令退让**:`PlayerControl.IsPlayerCommanded(f)`(= `RespectPlayerOrders` 开 && 玩家为将 && 该编队 `!IsAIControlled`)为真时,**不 Reset、不改任何权重**直接返回,不踩玩家手令。MP/replay 下 `IsAIControlled` 不可靠,故该退让在网络/回放中禁用。
 - **控制权回收**:否则若 `!f.IsAIControlled` 调一次 `f.SetControlledByAI(true)`(全 mod 唯一一处)让权重生效——是补救,非状态机。
+- **权重归属盖章(硬接管)**:`Drive` 把对该编队的 `Reset+SetBehaviorWeight` 包在 `WeightOwnership.ModStamping=true` 内(放行自身写入),收尾 `MarkStamped(f, now)` 记账;`BehaviorWeightOwnerPatch` 据此拦掉 vanilla/RBM 对该编队的后续设权(见 §0)。
 - `W<T>` 守卫:`w<=0` 跳过,且仅当 `GetBehavior<T>()!=null` 才 `SetBehaviorWeight<T>`(防缺行为抛 `MBException`);自定义行为经 `Ensure*` 惰性 `AddAiBehavior`。
 
 ---
@@ -175,7 +185,7 @@
 调度器内的**严格优先层**:当某编队被敌近战骑兵**贴脸**时,临时把 `ThreatReactionBehavior` 抬到 `ReactionWeight(3f)`——高于一切常规角色权重(最高 2f),必胜行为仲裁——并 `return true` 跳过常规权重设定。总开关 `ThreatReactionsEnabled`。
 
 - **威胁判定**:`ThreatAssessor.NearestChargingCav(f, team, m, range, ratio)` = 范围内、强度 ≥ `ratio×自身强度` 的最近敌近战骑编队。各角色参数不同:步兵据守(30m, 0.10)、弓兵/骑射后撤(28m, 0.05)、骑兵反冲锋(30m, 0.15,阈值更高以免小股骚扰打断锤的时序)。
-- **三种姿态**(按角色选):**Brace**(步兵立盾墙,被 ≥4 扇区围则改方阵 Square,原地不动只朝向威胁,免被背身冲穿)、**FallBack**(弓兵退到主步兵身后集结点或直接远离 30m,Loose 阵型)、**Counter**(骑兵:太近先后撤 `CounterRunup(22)` 蓄距,`_windupDone` 闩防来回抖,再 `ChargeToTarget`)。
+- **四种姿态**(`Mode`):**Brace**(步兵立盾墙,被 ≥4 扇区围则改方阵 Square,原地不动只朝向威胁,免被背身冲穿)、**FallBack**(弓兵退到主步兵身后集结点或直接远离 30m,Loose 阵型)、**Counter**(骑兵:太近先后撤 `CounterRunup(22)` 蓄距,`_windupDone` 闩防来回抖,再 `ChargeToTarget`)、**Rout**(整队背对威胁有序奔退、**面朝撤离方向=背部朝敌**)。前三种由 `TryReact` 在遇袭时触发;**Rout 不经 `TryReact`,而由调度器 `HoldRout` 在编队普通溃逃锁存(`RoutLatched`)时驱动**(见 §5/§8)。
 - **迟滞去抖**:有威胁立即进入;威胁消失后保持 `HoldSeconds(2)` 再退出;Counter 目标被歼则提前结束;退出时清回 None 以便下次重新蓄势。
 - **被committed状态抑制**:主步兵/包抄仅在 `!joined/!flanking` 才据守、轻骑仅在 `!committed` 才反冲、重骑仅在 `!hammering` 才反冲——**已投入的合围或决定性投锤不会被小股骚扰取消**。
 
@@ -198,36 +208,39 @@ mod 仅有的"真·新动作",全部直接继承引擎 `BehaviorComponent`(**零
 
 整支编队会**一起崩**,而非逐兵掉血。这是 mod 的结构性基础,也是**唯一无视 `ScopeFilter`、对敌我双方恒生效**的子系统;纯 MissionLogic,**零 Harmony、零反射**,士气读写走公开 `AgentComponentExtensions.Get/SetMorale` 与 `CommonAIComponent.StopRetreating`。
 
-每编队一个 `FormationShockState.Pool`(普通 float,存在弱键 `ConditionalWeakTable` 里)。每 0.5s(用**真实** dt 积分):
+每编队一个 `FormationShockState`(弱键 `ConditionalWeakTable`)。**有效压力 `Effective` = 情势池 `Pool` + 伤亡地板 `CasualtyFloor` + 冲锋震慑 `ChargeShock`**,三者时间行为不同,越 `有效阈值` 即整队溃逃:
 
-**池更新** = `Pool += (Σ压力速率) × dt`,再 `Pool -= 衰减/秒 × dt`,两步都 `≥0` 截断;再 **封顶** 到 `有效阈值(= 阈值 × TierResist) × PoolCapFactor(1.25)`(关键:防无界增长,威胁一缓即可在数秒内衰减回解锁线)。
+- **情势池 `Pool`**(级联+包围+远程三个**情势型**源):每 0.5s 用**真实** dt `Pool += Σ速率×dt` 再 `Pool -= PoolDecayPerSecond(3)×dt`,两步 `≥0`,**封顶** `有效阈值×PoolCapFactor(1.25)`(防无界增长——威胁一缓即可数秒内衰减回解锁线)。
+- **伤亡地板 `CasualtyFloor`**(**持久、可重整**):`= CasualtyErosionGain(90) × 自上次重整以来损失的当前兵力比`;**不衰减**(伤亡是永久侵蚀),仅在集结时基准归位→归零。tier3 损失 35% → 90×0.35=31.5 ≈ tier3 有效阈,恰可独力压垮(参考值 #1)。由编排层每拍计算,**非** `IMoralePressure`。
+- **冲锋震慑 `ChargeShock`**(`ChargeImpactSensor` 监听**真实**骑兵冲撞命中累加):每次 `IsHorseCharge` 命中计 `强度比 × 角色(重骑×3/轻骑×1) × 方向(背1/侧0.5/正0.15)`,**半衰期 60s** 慢衰减,编排层每拍镜像入 `ChargeShock`;溃逃即 `Discharge` 清零(已兑现,不滞留逼其反复再溃)。1 次重骑背冲 ≈42.8≥阈(必垮),60s 内 3 次轻骑背冲 ≈31.5=阈(参考值 #2/#3)。
 
-### 5 个压力源(各返回瞬时速率 /秒)
+有效阈值 = `PoolRoutThreshold(默认30) × TierResist(avgTier)`;`TierResist = clamp(1+(avgTier−2.5)×0.10, 0.6, 1.3)`——**高 tier 更难崩、低 tier 更脆**。
+
+### 情势型压力源(`IMoralePressure`,各返回瞬时速率 /秒,积分进情势池)
 
 | 源 | Tag | 公式(摘自 `MoralePressure.cs`) | 可关 |
 |---|---|---|---|
-| 伤亡 | cas | 存活比下降率:`drop=prev−now`,`drop>0` 时 `CasualtyGain(50)×drop/dt` | 否(常开) |
-| 级联 | csc | 邻编队溃逃比(排除自身)超 `0.15` 部分 ×`CascadeGain(12)`,封顶 8 | 否 |
+| 级联 | csc | 邻编队溃逃比(排除自身)超 `CascadeNeutral(0.15)` 部分 ×`CascadeGain(12)`,封顶 `CascadeCap(8)` | 否 |
 | 包围 | enc | ≥`EncircleMinSectors(4)` 个方向有敌:`EncircleGain(2.5)×coverage×density`(density 封顶 2) | 否 |
-| 远程 | rng | `RangedGain(1.5)×传感器威胁`(命中身/盾/近失 加权指数衰减) | ✅ `RangedPressureEnabled` |
-| 冲锋震慑 | chg | 40m 内敌近战骑、逼近速度 [2,12]:`ChargeShockGain(2)×closing×(1−d/40)` | ✅ `ChargeShockPressureEnabled` |
+| 远程 | rng | `RangedGain(5.0)×传感器威胁/人数×MCM「挨射士气影响」%`(命中身/盾/近失加权指数衰减,半衰期 20s) | ✅ `RangedPressureEnabled` |
 
-> 级联只看**邻队**、不含自身,杜绝自激雪崩;首拍以自身为 prev,故差分类源(伤亡/冲锋)首拍为 0。
+> **伤亡**与**冲锋**不再是情势型源:伤亡是上文每拍算的**持久地板**,冲锋是 `ChargeImpactSensor` 累加的 `ChargeShock`——二者各有持久/慢衰减语义,不进情势池。级联只看**邻队**(排除自身)杜绝自激雪崩;首拍以自身为 prev。`RangedGain` 早期被砍到 0.25(几乎不影响士气),现按实测调至 **5.0**。
 
 ### 决策(`Decide`)
 
-- 有效阈值 = `PoolRoutThreshold(默认30) × TierResist(avgTier)`;`TierResist = clamp(1+(avgTier−2.5)×0.10, 0.6, 1.3)`——**高 tier 更难崩、低 tier 更脆**。
-- **上升沿一次性溃逃**:`Pool ≥ 阈值` 且未 latch → 整队溃逃(`RoutLatched`,记时)。**迟滞**:须跌回 `阈值×0.5` 才解锁(防高频翻转把棘轮刷到底)。
-- **越打越脆(棘轮)**:每次整队溃逃 `RatchetLevel++`;集结目标随之降:`effRallyFloor = RallyMoraleFloor × RatchetDecayPerBreak(0.55)^level`;满 `RatchetBottomLevel(3)` 档则**触底,永不再集结**。
-- **集结门**(任一不满足即 None):触底→否;"大势已去"(本队活人占全场 < `LetGoTeamShareThreshold(0.12)`)→否;距上次溃逃 < `RallyDelaySeconds(8)`→否;否则 Rally。
+- **上升沿一次性溃逃**:`Effective ≥ 有效阈值` 且未 latch → 整队溃逃(`RoutLatched`,记时)。
+- **越打越脆(棘轮)**:每次整队溃逃 `RatchetLevel++`;集结目标随之降:`effRallyFloor = RallyMoraleFloor × RatchetDecayPerBreak(0.55)^level`;满 `RatchetBottomLevel(3)` 档则 **`Bottomed` 触底,永不再集结**。
+- **集结门(双迟滞)**(任一不满足即不集结):`Bottomed`→否;"大势已去"(本队活人占全场 < `LetGoTeamShareThreshold(0.12)`)→否;距上次溃逃 < `RallyDelaySeconds(默认20)`→否;**情势池** Pool 未跌回 `阈值×RoutClearFactor(0.5)`(火力/包围明显退去)→否;否则集结。时间闸 + 池闸两道杜绝"延时一到又越阈再溃"的每拍抖动。
+- **援军重整**:已 `Bottomed` 编队的原溃兵逃尽后,若被援军重新填充(有非逃成员)且距触底已过 `BottomedRefillResetDelay(2s)` → `ResetCollapse` 视作新战力(免援军一并被恐慌)。
 
-### 落到个体(`MoraleEffects`)
+### 溃逃落地:编队级后撤 + 决定性逐兵恐慌(`MoraleEffects` / 调度器)
 
-- **溃逃**:把成员 morale 压到 `PanicFloorMorale(0.005)`——**只降不升**,且严格 `>0`(不变量 `0.001 < 0.005 < 0.01[原版 panic 阈值]`,绝不 `SetMorale(0)`)。
-- **集结**:只对正在逃/恐慌者——先 `StopRetreating()`(单**升** morale 不解溃逃闩),再把 morale 补到 floor。
-- **RallySweep(Pass C)**:扫 `team.ActiveAgents` 把已脱离编队的散溃兵召回(它们不在编队成员里,Pass B 够不着),好让自动编队下一拍重新归位。
+- **普通溃逃**(`RoutLatched` 未触底):**不逐兵 Panic**(逐兵 Panic 触发引擎 `OnFleeing` 把兵踢出编队、令集结无法关联回去 → 亚秒抖动)。改为**编队级整体后撤**——调度器 `HoldRout` 走 `ThreatReactionBehavior.Mode.Rout`(背朝敌有序奔退,见 §5/§6),保持成建制;脱火后情势池衰减、池闸+时间闸满足即集结。
+- **决定性崩溃**(`Bottomed`):`MoraleEffects.PanicAgent` 逐兵 `CommonAIComponent.Panic()` 四散(`IsRunningAway` → 吃追击伤害加成),morale 压到 `PanicFloorMorale(0.005)`——**只降不升、严格 >0**(不变量 `0.001 < 0.005 < 0.01[原版 panic 阈]`,绝不 `SetMorale(0)`)。触底不集结 → 无脱编↔召回对冲。
+- **集结**(`RallyAgent`):只对正在逃者——先 `StopRetreating()`(单**升** morale 不解溃逃闩),再把 morale 补到 `effRallyFloor`。
+- **RallySweep**:扫 `team.ActiveAgents` 把已脱离编队的散溃兵 `StopRetreating`(它们不在编队成员里),好让自动编队下一拍归位。
 
-> UI 士气读出 `MoraleReadout.TryGetRemaining` 用的是**同一个池**的 `1 − Pool/有效阈值`——所以标记图标恰好在该编队真正溃逃时被填满灰色。
+> UI 士气读出 `MoraleReadout.TryGetRemaining` = **同一个池**的 `1 − Effective/有效阈值`(再以存活比封顶);`MoraleReadout.IsRouting`(= `RoutLatched || Bottomed`)驱动标记图标的**溃逃闪烁**(见 §12)。
 
 ---
 
@@ -235,7 +248,8 @@ mod 仅有的"真·新动作",全部直接继承引擎 `BehaviorComponent`(**零
 
 - **`FormationScanner.Scan`**:每编队每拍**一次** `ApplyActionOnEachUnit` 走完,产出融合快照 `FormationSnapshot`(Count、RoutingFraction、AvgMorale、AvgTier、CasualtyRatio、LocalEnemyCount、OccupiedSectors、NearestEnemyCavDist)。复用 visit 委托与扇区桶,稳态**零堆分配**。刻意读 `QuerySystem.CasualtyRatio`(`.Value` 会自动重算),不读 `...ReadOnly`(被软压制的编队不跑 team AI,ReadOnly 缓存会冻在初值)。
 - **`FormationStrength.Of`**:全 mod **唯一**的"强度/规模"度量 = 活人 `GetBattleTier()` 之和(= 人数 × 平均 tier),按 `Mission.CurrentTime` 每帧记忆化。**约定:任何地方都不比原始人头数**,一律走它。
-- **`RangedThreatSensor`**:`OnMissileHit` 按命中身/盾/近失(权重 1.0/0.5/0.25)累加每编队威胁(只算敌方射向该编队的);`OnMissionTick` 用 `factor=exp(−1.5×dt)` 真指数衰减(长帧也不会一步归零),低于 0.01 剔除。
+- **`RangedThreatSensor`**:`OnMissileHit` 按命中身/盾/近失(权重 1.0/0.5/0.25)累加每编队威胁(只算敌方射向该编队的);`OnMissionTick` 用 `factor=exp(−1.5×dt)` 真指数衰减(长帧也不会一步归零),低于 0.01 剔除。喂士气"受远程攻击"压力源。
+- **`ChargeImpactSensor`**:`OnAgentHit` 监听**真实**骑兵冲撞命中(`IsHorseCharge`),按 `强度比 × 角色(重骑3/轻骑1) × 方向(背1/侧0.5/正0.15)` 累加每编队"冲击单位",半衰期 60s 慢衰减;编排层每拍镜像入士气 `ChargeShock`,编队溃逃即 `Discharge` 清零。零 Harmony、对双方恒生效。
 - **`ThreatAssessor.NearestChargingCav`**:供反应层用,范围+强度比筛最近敌近战骑(排除骑射)。
 - **`FormationAvoidance.Steer`**:路径前瞻**纯垂直**避让——前瞻距离随速度自适应([12,90]m),只侧移不后退、不会被正面挡停;重叠时硬推开。`MoveTo` 是统一的"去某点"构造。最终冲锋段**不**走它(要撞上目标)。
 - **`TickGate`**:固定间隔节流值类型,`Ready(dt, out elapsed)` 返回**真实累计 dt** 供按真实时间积分。
@@ -247,7 +261,7 @@ mod 仅有的"真·新动作",全部直接继承引擎 `BehaviorComponent`(**零
 三个**后置**补丁,只读/只乘最终值,绝不前缀覆盖或重算 RBM 内层伤害/护甲。受 `ScopeFilter`(按**发起方**队伍判)+ `IsFieldBattle` + 各自 MCM 开关门控。
 
 - **`DamageSystem`**(`AgentApplyDamageModel.CalculateDamage` 的单一 Postfix,`[HarmonyAfter("com.rbmcombat")]`+`Priority.Last`):把**最终** `__result` 乘**恰好一次**(一个方向/追击因子 × 一个可选冲锋因子)。
-  - **排除投射**(`IsMissile`)、友伤、被盾挡——方向/追击/冲锋缩放**仅近战**,远程用原版/RBM 以免把背身误读成背击。
+  - **投射**(`IsMissile`):跳过方向/追击/冲锋缩放(那些仅近战,套到箭上会把背身误判成背击),只乘一个统一的 `RangedDamageMultiplier`(MCM「远程武器伤害倍率」,默认 0.8)后返回;友伤、被盾挡仍直接返回不动。
   - **方向**优先用编队级判定 `FormationHitDirection`(受击编队朝向 vs 攻击者→受击者approach,阈值 `Dot 0.3`:后2/前0/侧1),编队缺失/失效时退回逐 agent 判定。
   - **侧后加成更强的 4 个角色**(`IsFlankRole`):包抄步兵 `HeavyInfantry`、左轻骑 `LightCavalry`、右轻骑 `Cavalry`、重骑 `HeavyCavalry`。
   - **追击**:打逃兵用 `PursuitMultiplier(1.7)` 覆盖一切;开 `PursuitGuaranteedKill` 时把伤害顶到"血量+1"保证击杀。
@@ -266,11 +280,13 @@ mod 仅有的"真·新动作",全部直接继承引擎 `BehaviorComponent`(**零
 
 ## 12. 设置 / 可观测性 / UI(`Settings` / `Logging` / `Diagnostics` / `UI`)
 
-- **`AnvilSettings`**(MCM v5,`AttributeGlobalSettings`,Id `AnvilAndHammerAI_v1`,`json2`):分组(按 `GroupOrder` 渲染)= 常规(0)、战场显示(1)、溃逃与集结(2)、连溃脆化(3)、防过早判负(4)、伤亡分布(5)、群体溃逃/士气(6)、编队移速(7)。**士气系统本身无独立开关——随 mod 常开**,只暴露调参与两个压力源开关。玩家可见文本走 `{=AnvilHammer_*}` 本地化键、用游戏内白话;JSON 属性名保持稳定以兼容旧存档。
+- **`AnvilSettings`**(MCM v5,`AttributeGlobalSettings`,Id `AnvilAndHammerAI_v1`,`json2`):分组(按 `GroupOrder` 渲染)= 常规(0)、战场显示(1)、溃逃与集结(2)、连溃脆化(3)、防过早判负(4)、伤亡分布(5)、群体溃逃/士气(6)、编队移速(7)。**士气系统本身无独立开关——随 mod 常开**,只暴露调参与两个压力源开关。本会话新增的玩家旋钮:战场显示组「显示箭矢轨迹」、伤亡分布组「远程武器伤害倍率」(默认 0.8)、以及「挨射士气影响」% 滑条(在远程压制基线上自调)。玩家可见文本走 `{=AnvilHammer_*}` 本地化键、用游戏内白话;JSON 属性名保持稳定以兼容旧存档。
 - **`Log`**:写 `Documents\Mount and Blade II Bannerlord\AnvilAndHammerAI.log`,Info 恒写、Debug 仅 `DebugLogging` 开、所有写入吞异常(日志永不崩游戏)。
 - **`Telemetry` + `AnvilDiagnosticsMissionLogic`**:每 5s 刷一次 `[tele B/C][tele D][tele E][tele F][tele R]` 五行 + `[slot]/[side]/[diag]` 心跳。**指导原则:某计数器为 0 = 该子系统这 5s 没触发**——用来定位哪一层没工作。
 - **`BattleNarrator`**:左下角提示(溃逃红/集结绿/战术蓝),按(编队×频道×模式)去重 + 3s 冷却;仅玩家自己的队伍出提示。
 - **UI 士气填充**(UIExtenderEx):`FormationMarkerMoraleFillExtension` 在编队标记图标的 `TeamTypeWidget/Children` **Index 0**(白色兵种符号**之下**)注入一个裁剪容器,内含一张与图标同款圆形 sprite(`General\compass\target_background`)的**深灰**盘;容器高 = `(1−剩余士气)×图标高`,只露顶部那段→把"已失士气"段盖灰,下段透出原阵营色(我方青/友军绿/敌方红),白符号始终可见。`FormationMarkerMoraleMixin` 每帧读 `MoraleReadout` 并复刻原版距离缩放算高度。`AlwaysShowMarkersPatch` 在 `AlwaysShowFormationMarkers` 开时把原版 `MissionFormationMarkerVM.IsEnabled` 的 `false→true`,让标记免长按 Alt 全程显示。
+- **UI 图标染色 + 溃逃闪烁**(同 `FormationMarkerMoraleMixin`,经 `FormationMarkerIconColorExtension` 给兵种符号 `FormationTypeMarker` 加 `Color` 绑定 `@FormationIconColor`):包抄步兵/重骑染金、其余白;**处于溃逃中**(`MoraleReadout.IsRouting` = `RoutLatched||Bottomed`)的编队,图标 alpha 按正弦在 `[0.15,1]` 间**渐变闪烁**(周期 ~1s),敌我皆然——一眼可辨哪支在崩。只改 alpha 保留 RGB(原版不写该 widget 的 Color)。
+- **箭矢轨迹**(`MissileTrailMissionLogic`,纯渲染):沿每枚在飞导弹**真实路径**抛池化短杆段(`rts_arrow_body` + **无光照** `vertex_color_blend_no_depth_mat`(敌我同为浅灰,不因朝光/背光偏色)+ `SetFactor1` 浅灰,`EntityFlags|0x400000`+`EntityVisibilityFlags=4` 穿遮挡常显),每段抛下时调原生 `GameEntity.FadeOut(TTL)` 自动淡出、到龄回收复用;可见长 ≈ 弹速×TTL ≈ 半程。**仅 RTS/自由镜头**(`MainAgent==null || !IsPlayerControlled`)显示、玩家操控角色时隐藏,受 MCM「显示箭矢轨迹」门控,`MaxSegments` 为降帧护栏。
 
 ---
 
@@ -281,7 +297,7 @@ mod 仅有的"真·新动作",全部直接继承引擎 `BehaviorComponent`(**零
 3. **共目标补丁只叠加、不替换**:`[HarmonyAfter("com.rbmcombat"/"com.rbmai")]`+`[HarmonyPriority(Priority.Last)]`,只乘最终值,绝不前缀覆盖 RBM 内层。
 4. **角色 = `Formation.FormationIndex`**;`Formation` 没有 `FormationClass` 属性(同名是别的网络消息类型);骑乘攻击者的角色在骑手身上。
 5. **`ScopeFilter` 门控一切,除了士气(双方)与战败安全(独立玩家侧)**。
-6. **权重设定器,非状态机**:`Reset`+`SetBehaviorWeight` 高频重申压制取胜;唯一 `SetControlledByAI` 是 `Drive()` 里的控制权回收。
+6. **权重设定器 + 硬接管,非状态机**:`Reset`+`SetBehaviorWeight` 重申计划,并经 `BehaviorWeightOwnerPatch`/`WeightOwnership` 拦掉 vanilla/RBM 对 **mod 驱动编队**的 `WeightFactor` 写入(未接管编队不拦,绝不写呆滞);唯一 `SetControlledByAI` 是 `Drive()` 里的控制权回收。
 7. **无自由混战**:`BehaviorCharge` 只在追击溃兵分支出现(且仅左右轻骑),砧永不冲锋。
 8. **规模/强度一律走 `FormationStrength`(tier 加权),不比原始人头数**。
 9. **士气绝不 `SetMorale(0)`**,只压到 `0.005`(>0,< 原版 panic 0.01);只降不升,集结只对在逃者且必先 `StopRetreating`。

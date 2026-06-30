@@ -16,7 +16,7 @@ namespace AnvilAndHammerAI.Formations
     /// </summary>
     public sealed class ThreatReactionBehavior : BehaviorComponent
     {
-        public enum Mode { None, Brace, FallBack, Counter }
+        public enum Mode { None, Brace, FallBack, Counter, Rout }
 
         private Mode _mode;
         private Formation _threat;   // 来袭敌编队(Counter 用作冲锋目标;Brace/FallBack 用其位置定朝向)
@@ -36,8 +36,6 @@ namespace AnvilAndHammerAI.Formations
             CurrentFacingOrder = FacingOrder.FacingOrderLookAtEnemy;
             CalculateCurrentOrder();
         }
-
-        public Mode CurrentReaction => _mode;
 
         /// <summary>调度器每拍注入反应模式与目标/落点。mode==None = 本拍无反应(让位常规权重)。enveloped 仅 Brace 用(被夹击→Square)。</summary>
         public void SetReaction(Mode mode, Formation threat, Vec2 threatPos, bool hasThreatPos, Vec2 rally, bool hasRally, bool enveloped)
@@ -116,6 +114,18 @@ namespace AnvilAndHammerAI.Formations
                         : FacingOrder.FacingOrderLookAtEnemy;
                     break;
                 }
+                case Mode.Rout:
+                {
+                    // 溃逃后撤(决定性崩溃之外):整队背对威胁奔退(散开)。**面朝撤离方向 = 背部朝敌** →
+                    // 编队级 CurrentDirection 背敌、逐兵亦背敌 → 敌方命中判为背袭,后撤照吃溃逃伤害加成(见 DamageSystem)。
+                    _arrangement = ArrangementOrder.ArrangementOrderLoose;
+                    Vec2 away = me - tpos;
+                    away = away.LengthSquared > 1e-4f ? away.Normalized() : self.Direction;
+                    Vec2 target = me + away * ReactionTuning.FallbackAwayDistance;
+                    base.CurrentOrder = FormationAvoidance.MoveTo(self, target);
+                    CurrentFacingOrder = FacingOrder.FacingOrderLookAtDirection(away);
+                    break;
+                }
                 default:
                     base.CurrentOrder = MovementOrder.MovementOrderStop;
                     CurrentFacingOrder = FacingOrder.FacingOrderLookAtEnemy;
@@ -146,6 +156,7 @@ namespace AnvilAndHammerAI.Formations
                 case Mode.Brace: return new TextObject("{=AnvilHammer_reaction_brace}Shield Wall");
                 case Mode.FallBack: return new TextObject("{=AnvilHammer_reaction_fallback}Fall Back");
                 case Mode.Counter: return new TextObject("{=AnvilHammer_reaction_counter}Counter-Charge");
+                case Mode.Rout: return new TextObject("{=AnvilHammer_reaction_rout}Routing");
                 default: return new TextObject("{=AnvilHammer_reaction_default}Respond");
             }
         }

@@ -9,7 +9,7 @@ namespace AnvilAndHammerAI.Formations
         // 触发:敌"近战骑兵"编队进入此水平距离(m)即视为对本编队的"急性冲锋威胁"。
         // 比 cav-cover 巡逻判定的 60m 更近(更贴脸才反应),避免远处骑兵晃一下就打断计划。
         public const float AcuteCavRange = 30f;
-        public const float ArcherFallbackRange = 28f; // 弓兵/骑射:略大,早一点撤(它们扛不住贴身)
+        public const float ArcherFallbackRange = 33f; // 弓兵/骑射:略大于步兵的 30f,早一点撤(它们扛不住贴身)
 
         // 显著性门:敌骑兵力值(FormationStrength,tier 加权)≥ 此比例 × 本编队兵力值 才算威胁(去噪)。
         public const float InfantryBraceCavRatio = 0.10f;  // 步兵架枪:门槛低,有点骑兵就该结阵受冲

@@ -32,8 +32,9 @@ namespace AnvilAndHammerAI.Logging
         // F 编队级士气池
         public static int FormRoutEdges;       // 编队溃逃触发(池越阈上升沿)次数
         public static int FormRoutAgents;      // 被压 panic 下限的 agent 次数
-        public static float PoolPeak;          // 本窗口池峰值(>0 即池在涨)
-        public static float PrCas, PrCsc, PrEnc, PrRng, PrChg; // 各压力源贡献和(归因哪个源在驱动)
+        public static float PoolPeak;          // 本窗口有效压力峰值(池+伤亡地板+冲锋震慑;>0 即有压力)
+        public static float PrCas, PrCsc, PrEnc, PrRng, PrChg; // 归因:cas=伤亡地板增量和 csc/enc/rng=情势源贡献和 chg=冲锋震慑峰值
+        public static int ChargeHits;          // 本窗口被记入的真实背/侧冲命中次数(反推单次冲锋命中数 K,标定 ChargeImpactGain)
 
         /// <summary>按源 Tag 累加压力贡献(供 [tele F] 归因)。</summary>
         public static void AddPressure(string tag, float v)
@@ -44,7 +45,6 @@ namespace AnvilAndHammerAI.Logging
                 case "csc": PrCsc += v; break;
                 case "enc": PrEnc += v; break;
                 case "rng": PrRng += v; break;
-                case "chg": PrChg += v; break;
             }
         }
 
@@ -54,8 +54,8 @@ namespace AnvilAndHammerAI.Logging
             sink($"[tele D] routBlocked={RoutBlocked}");
             float avg = DmgScaled > 0 ? DmgMultSum / DmgScaled : 0f;
             sink($"[tele E] dmgCalls={DmgCalls} pursuit={DmgPursuit} rear={DmgRear} stand={DmgStand} flank={DmgFlank} charge={DmgCharge} plow={DmgPlow} avgMult={avg:0.00}");
-            sink($"[tele F] formRout={FormRoutEdges} routAgents={FormRoutAgents} poolPeak={PoolPeak:0.0} " +
-                 $"pr[cas={PrCas:0.0} csc={PrCsc:0.0} enc={PrEnc:0.0} rng={PrRng:0.0} chg={PrChg:0.0}]");
+            sink($"[tele F] formRout={FormRoutEdges} routAgents={FormRoutAgents} effPeak={PoolPeak:0.0} chargeHits={ChargeHits} " +
+                 $"pr[cas(floor)={PrCas:0.0} csc={PrCsc:0.0} enc={PrEnc:0.0} rng={PrRng:0.0} chg(peak)={PrChg:0.0}]");
             sink($"[tele R] react[brace={ReactBrace} fallback={ReactFallback} counter={ReactCounter}]");
             Reset();
         }
@@ -68,6 +68,7 @@ namespace AnvilAndHammerAI.Logging
             DmgMultSum = 0f;
             ReactBrace = ReactFallback = ReactCounter = 0;
             FormRoutEdges = FormRoutAgents = 0;
+            ChargeHits = 0;
             PoolPeak = PrCas = PrCsc = PrEnc = PrRng = PrChg = 0f;
         }
     }

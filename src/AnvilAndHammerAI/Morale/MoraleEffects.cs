@@ -4,24 +4,24 @@ using TaleWorlds.MountAndBlade;
 namespace AnvilAndHammerAI.Morale
 {
     /// <summary>
-    /// 编队级决策落到 per-agent 的**唯一写入边界**(ADR-0004/0009 契约最敏感处,集中此处便于审计)。
-    /// 两条硬约束钉死在这里:
-    ///   · 溃逃 = 逐兵把士气压到 panic **小正数下限**(>0),**绝不 SetMorale(0)**、绝不整队原子布尔崩溃;
-    ///   · 集结 = 逐兵 <see cref="CommonAIComponent.StopRetreating"/> + 抬士气(抬士气**不能**止溃,只有 StopRetreating 能清锁存)。
-    /// 范围(ScopeFilter)与 tick 门控由编排层在调用前完成,这里只管"怎么写一个 agent"。
+    /// 士气层落到 per-agent 的写入边界。**溃逃不再逐兵 Panic**(那会触发引擎 OnFleeing 把兵踢出编队、令集结无法关联回去 → 亚秒抖动);
+    /// 溃逃改为**编队级整体后撤**,由指挥调度器读 RoutLatched 驱动(见 CommandScheduler.HoldRout)。本类只剩**集结**一条:
+    /// 把脱编的(主要是 vanilla 个体恐慌的)散兵 <see cref="CommonAIComponent.StopRetreating"/> + 抬士气,好让 AutoFormation 归队。
+    /// 不变量(ADR-0004/0009):抬士气**不能**止溃、只有 StopRetreating 能清溃逃;且绝不 SetMorale(0)。
     /// </summary>
     public static class MoraleEffects
     {
-        /// <summary>溃逃:把单兵士气压到 floor(只降不升)。floor &lt; 哨兵阈视为误设 0 → 拒写并 Log.Error。</summary>
-        public static void RoutAgent(Agent a, float floor)
+        /// <summary>
+        /// 决定性崩溃(触底)逐兵恐慌:仅对**尚未恐慌**者压士气到 floor + 引擎 <see cref="CommonAIComponent.Panic"/>(四散溃逃,IsRunningAway → 吃追击伤害加成)。
+        /// 仅用于触底编队(不集结 → 无脱编↔召回对冲);floor 严格 &gt;0,绝不 SetMorale(0)。幂等,对已恐慌者零开销。
+        /// </summary>
+        public static void PanicAgent(Agent a, CommonAIComponent cai)
         {
-            if (floor < MoraleTuning.PanicFloorMin)
-            {
-                Log.Error($"[formrout] panic 下限 {floor:0.00} < {MoraleTuning.PanicFloorMin:0.00},拒写防误设 SetMorale(0)。");
-                return;
-            }
+            if (cai == null || cai.IsPanicked) return;
+            float floor = MoraleTuning.PanicFloorMorale;
             if (AgentComponentExtensions.GetMorale(a) > floor)
                 AgentComponentExtensions.SetMorale(a, floor);
+            cai.Panic();
             Telemetry.FormRoutAgents++;
         }
 

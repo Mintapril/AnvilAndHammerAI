@@ -38,10 +38,12 @@
     <string id="AnvilHammer_show_morale_bars_hint" text="把每个编队的圆形兵种图标按当前士气以其阵营色填充,失去的部分变深灰(长按 Alt 可见编队标记,或开启下面的“始终显示编队标记”)。敌我编队都显示,编队越接近成片溃逃、灰色越多。默认开启。" />
     <string id="AnvilHammer_always_show_markers" text="始终显示编队标记" />
     <string id="AnvilHammer_always_show_markers_hint" text="让编队标记(浮在各编队上方的圆形兵种图标)始终保持显示,无需长按 Alt。默认关闭。" />
+    <string id="AnvilHammer_show_missile_trails" text="显示箭矢轨迹" />
+    <string id="AnvilHammer_show_missile_trails_hint" text="为每一支在飞的箭矢/弩矢/标枪沿其飞行方向画一条浅灰色轨迹线,即使拉远/RTS 俯视也清晰可见(不像原版轨迹拉远就看不见)。默认开启。" />
 
     <!-- MCM:溃逃与集结 -->
     <string id="AnvilHammer_rally_delay" text="集结延迟(秒)" />
-    <string id="AnvilHammer_rally_delay_hint" text="部队溃逃后,过多久才会尝试稳住并重新集结。太短=刚溃逃就被拉回来,太长=溃了就拉不回。默认 8。" />
+    <string id="AnvilHammer_rally_delay_hint" text="部队溃逃后,过多久才会尝试稳住并重新集结。太短=刚溃逃就被拉回来,太长=溃了就拉不回。默认 20。" />
     <string id="AnvilHammer_rally_morale_floor" text="集结后士气" />
     <string id="AnvilHammer_rally_morale_floor_hint" text="部队重新集结时把士气恢复到的目标值。越高越容易稳住、越不容易立刻再次溃逃。默认 25。" />
 
@@ -80,6 +82,8 @@
     <string id="AnvilHammer_heavy_cav_charge_mult_hint" text="重骑高速撞击的伤害倍率。重骑冲撞动量大,撞击更具毁灭性,默认 1.7。" />
     <string id="AnvilHammer_heavy_cav_plow_through" text="重骑冲撞穿阵" />
     <string id="AnvilHammer_heavy_cav_plow_through_hint" text="重骑高速撞击会把正面的敌人撞翻在地,从而保持冲势穿过敌阵(不被站立的士兵挡停、减速更小)。这是重骑大动量的体现;关闭则重骑撞人后更易被挡停。仅对你方重骑、且只撞翻敌人。默认开启。" />
+    <string id="AnvilHammer_ranged_damage_multiplier" text="远程武器伤害倍率" />
+    <string id="AnvilHammer_ranged_damage_multiplier_hint" text="弓、弩与投掷武器(箭、弩矢、标枪)命中时的伤害倍率。越低远程伤害越少。默认 0.8。" />
 
     <!-- MCM:编队速度 -->
     <string id="AnvilHammer_formation_speed_enabled" text="按编队调整移动速度" />
@@ -100,6 +104,8 @@
     <string id="AnvilHammer_pool_decay_per_second_hint" text="编队承受的压力每秒消退多少。越大=压力消得越快、越难持续崩溃、溃逃后越快恢复。默认 6。" />
     <string id="AnvilHammer_ranged_pressure_enabled" text="压力来源:遭受箭雨" />
     <string id="AnvilHammer_ranged_pressure_enabled_hint" text="把“被弓箭、标枪攒射”计入整队溃逃的压力(命中盾牌、命中士兵,以及落在身边的箭矢都算)。默认开启。" />
+    <string id="AnvilHammer_ranged_pressure_intensity" text="挨射士气影响(%)" />
+    <string id="AnvilHammer_ranged_pressure_intensity_hint" text="被远程攒射对整队溃逃的影响有多大。100% 为(已削弱过的)默认值;觉得弓箭让部队太容易动摇就调低,想让密集箭雨更快冲垮编队就调高。设为 0% 则彻底不把挨射计入溃逃压力。" />
     <string id="AnvilHammer_charge_shock_pressure_enabled" text="压力来源:敌骑冲锋逼近" />
     <string id="AnvilHammer_charge_shock_pressure_enabled_hint" text="把“敌方骑兵高速冲锋逼近”计入整队溃逃的压力(越近、越快,威慑越强)。默认开启。" />
 
@@ -110,6 +116,7 @@
     <string id="AnvilHammer_reaction_brace" text="结阵御骑" />
     <string id="AnvilHammer_reaction_fallback" text="后撤脱离" />
     <string id="AnvilHammer_reaction_counter" text="回身反冲" />
+    <string id="AnvilHammer_reaction_rout" text="溃逃后撤" />
     <string id="AnvilHammer_reaction_default" text="应敌" />
 
     <!-- 战场播报:兵种名 -->

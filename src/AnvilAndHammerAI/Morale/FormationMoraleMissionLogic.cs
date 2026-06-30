@@ -27,26 +27,33 @@ namespace AnvilAndHammerAI.Morale
         private const float TickInterval = 0.5f;
 
         private readonly FormationShockPool _pool;
+        private readonly ChargeImpactSensor _chargeSensor;
         private readonly FormationScanner _scanner = new FormationScanner();
         private readonly List<IMoralePressure> _sources;
-        private readonly AgentEffectApplier _applier = new AgentEffectApplier();
 
         private readonly Dictionary<Team, int> _counts = new Dictionary<Team, int>();
         private readonly List<FormationSnapshot> _buffer = new List<FormationSnapshot>(8);
         private TickGate _gate = new TickGate(TickInterval);
         private bool _announced;
+        private readonly Action<Agent> _bottomedPanic; // 触底(决定性崩溃)逐兵恐慌四散(缓存委托,稳态零分配)
 
-        public FormationMoraleMissionLogic(FormationShockPool pool, RangedThreatSensor rangedSensor)
+        public FormationMoraleMissionLogic(FormationShockPool pool, RangedThreatSensor rangedSensor, ChargeImpactSensor chargeSensor)
         {
             _pool = pool;
+            _chargeSensor = chargeSensor;
+            _bottomedPanic = a =>
+            {
+                if (a == null || !a.IsHuman) return;
+                var cai = a.CommonAIComponent;
+                if (cai != null) MoraleEffects.PanicAgent(a, cai);
+            };
+            // 情势型源(反映"当前态势"):每拍 Sample → 积分进情势池 → 每秒衰减。
+            // 伤亡(持久地板)与冲锋(真实冲击震慑)不在此列,由下方主循环分别直接计算/镜像。
             _sources = new List<IMoralePressure>
             {
-                new CasualtyPressure(),
                 new CascadePressure(),
                 new EncirclementPressure(),
                 new RangedFirePressure(rangedSensor),  // 受远程攻击(箭矢/标枪落点)
-                new ChargeShockPressure(),             // 冲锋震慑(高速逼近的近战骑兵)
-                // 扩展点:骑兵 AI 重写后 → new CavalryChargePressure(chargeProbe),(读 facing/heavy/size/tier 算 Δ)
             };
         }
 
@@ -77,8 +84,6 @@ namespace AnvilAndHammerAI.Morale
             float threshold = s.PoolRoutThreshold;
             float decayPerSec = s.PoolDecayPerSecond;
             bool ratchet = s.RatchetEnabled;
-            float ratchetDecay = s.RatchetDecayPerBreak;
-            float routFloor = MoraleTuning.PanicFloorMorale;
             float rallyFloor = s.RallyMoraleFloor;
             float rallyDelay = s.RallyDelaySeconds;
 
@@ -92,7 +97,7 @@ namespace AnvilAndHammerAI.Morale
                 foreach (Formation f in team.FormationsIncludingEmpty)
                 {
                     if (f.CountOfUnits == 0) continue;
-                    FormationSnapshot snap = _scanner.Scan(f, team);
+                    FormationSnapshot snap = _scanner.Scan(f);
                     if (snap.Count == 0) continue;
                     _buffer.Add(snap);
                     sumRouting += snap.RoutingCount;
@@ -107,6 +112,13 @@ namespace AnvilAndHammerAI.Morale
                     FormationShockState st = _pool.GetOrCreate(snap.Formation);
                     FormationSnapshot prev = st.HasPrev ? st.Prev : snap;
 
+                    // 援军重整旗鼓:已触底编队的原崩溃逐兵(每拍恐慌四散)逃尽/离队后,若被援军重新填充(出现非逃成员),
+                    // 且距触底已过 BottomedRefillResetDelay(跳过触底瞬刻"已恐慌未起逃"的过渡)→ 重置崩溃状态,视作一支新战力,
+                    // 否则援军一并入就被下方 _bottomedPanic 当场恐慌。(普通溃逃是整队后撤、成员不脱编,不走此路。)
+                    if (st.Bottomed && now - st.LastRoutTime > MoraleTuning.BottomedRefillResetDelay
+                        && snap.Count > snap.RoutingCount)
+                        st.ResetCollapse();
+
                     float pressure = 0f;
                     for (int k = 0; k < _sources.Count; k++)
                     {
@@ -120,27 +132,57 @@ namespace AnvilAndHammerAI.Morale
 
                     st.Accumulate(pressure, tickDt);
                     st.Decay(decayPerSec, tickDt);
-                    // 池封顶(阈×tier抗性×PoolCapFactor):防平直衰减下池无界增长到 100+,使威胁减弱后能在几秒内衰减到
-                    // 解锁线(阈×0.5),整队得以正常集结恢复;持续被围殴者仍贴顶=不恢复(符合预期)。
+                    // 情势池封顶(阈×tier抗性×PoolCapFactor):防情势压力(级联/包围/远程)无界增长。
+                    // 伤亡地板(持久)与冲锋震慑(慢衰减)各有独立边界,不在此封。
                     float poolCap = MoraleTuning.RoutThreshold(threshold, snap.AvgTier) * MoraleTuning.PoolCapFactor;
                     if (st.Pool > poolCap) st.Pool = poolCap;
-                    if (st.Pool > Telemetry.PoolPeak) Telemetry.PoolPeak = st.Pool;
+
+                    // ① 伤亡溃逃压力(**可重整**)= ErosionGain × 自上次重整以来损失的"当前兵力"比 =(cf−基准)/(1−基准)。
+                    //    tier3 该比达 35% → 31.5 = 阈值 → 溃(参考值 #1)。重整时 Decide 把基准归位到当前伤亡 → 此压力归零 → 可再战;
+                    //    之后再损失"当前兵力"的 35% 才再溃(逐命更脆)。"接战过不回满"由士气条单独的存活比上限保证(见 MoraleReadout)。
+                    float cf = 1f - snap.CasualtyRatio;
+                    if (cf < 0f) cf = 0f;
+                    // 溃逃窗口内不让伤亡读数"虚涨":逃散(未死)使 CountOfUnits 暂降、引擎 CasualtyRatio 虚高,
+                    // 会把士气条上限(=存活比)瞬时压到空(用户报告的"触底后槽卡空")。仅在非溃逃态、或读数下降(真恢复)时更新;
+                    // 真实阵亡导致的下降在集结后(CountOfUnits 恢复)正确体现。封顶语义("接战过不回满")不变。
+                    if (!st.RoutLatched || cf < st.CasualtyFractionNow)
+                        st.CasualtyFractionNow = cf;
+                    float denom = 1f - st.CasualtyBaseline;
+                    float sinceRally = denom > 1e-4f ? (cf - st.CasualtyBaseline) / denom : 0f;
+                    if (sinceRally < 0f) sinceRally = 0f; else if (sinceRally > 1f) sinceRally = 1f;
+                    float floor = MoraleTuning.CasualtyErosionGain * sinceRally;
+                    if (floor > st.CasualtyFloor) Telemetry.AddPressure("cas", floor - st.CasualtyFloor);
+                    st.CasualtyFloor = floor;
+
+                    // ② 冲锋冲击震慑:镜像 ChargeImpactSensor(真实背/侧冲命中按**强度比**累加、慢衰减)。强度比已使其与编队大小无关(同兵力→Σ=1),无需再除人数。直接计入有效压力(不经情势池积分)。
+                    st.ChargeShock = (_chargeSensor != null && s.ChargeShockPressureEnabled)
+                        ? MoraleTuning.ChargeImpactGain * _chargeSensor.GetShock(snap.Formation) : 0f;
+                    if (st.ChargeShock > Telemetry.PrChg) Telemetry.PrChg = st.ChargeShock;
+
+                    if (st.Effective > Telemetry.PoolPeak) Telemetry.PoolPeak = st.Effective; // 峰值改记有效压力(池+地板+冲锋)
 
                     Decision d = Decide(st, threshold, snap.AvgTier, now, letGo, ratchet, rallyDelay);
 
                     // 战场事件:整队溃逃/重整播报(左下角)。对双方均播,标我方/敌军。
                     bool isEnemy = m.PlayerTeam != null && team.IsEnemyOf(m.PlayerTeam);
-                    if (d == Decision.Rout) BattleNarrator.OnRout(snap.Formation, isEnemy);
+                    if (d == Decision.Rout)
+                    {
+                        BattleNarrator.OnRout(snap.Formation, isEnemy);
+                        // 溃逃即**释放**冲锋震慑:一次冲锋把编队冲垮后,其震慑已"兑现",不再滞留(慢衰减)逼它反复再溃。
+                        // → 保证单次冲锋后能恢复重整;3 次累加(每次未溃)仍有效,因未溃则不释放。新的冲撞命中会重新累加。
+                        _chargeSensor?.Discharge(snap.Formation);
+                        st.ChargeShock = 0f;
+                    }
                     else if (d == Decision.Rally) BattleNarrator.OnRally(snap.Formation, isEnemy);
 
-                    // 集结目标士气随编队棘轮档数衰减(越打越脆:同样集结只能恢复到越来越低的士气)。
-                    float effRallyFloor = ratchet && st.RatchetLevel > 0
-                        ? rallyFloor * (float)Math.Pow(ratchetDecay, st.RatchetLevel)
-                        : rallyFloor;
-
-                    // 逐兵单遍:Rout 压低 / Rally 拉回(决策与档数已在编队级算好);零捕获(applier 缓存委托)
-                    _applier.Begin(d, routFloor, effRallyFloor);
-                    _applier.Run(snap.Formation);
+                    // 溃逃的"效果"**不再逐兵 Panic**(逐兵 Panic 会触发引擎 OnFleeing 把兵踢出编队 → 集结再也关联不回 → 亚秒抖动)。
+                    // 改为**编队级**:RoutLatched 由指挥调度器读取 → 整队有序后撤(ThreatReactionBehavior.FallBack,见 CommandScheduler.HoldRout);
+                    // 集结(RoutLatched 解除)即调度器恢复战斗行为。编队全程成建制(Pass A 仍扫描它)→ 脱离火力后情势池正常衰减解锁集结。
+                    // 故此处对成员零写入;脱编的 vanilla 个体恐慌散兵仍由下方 RallySweep 召回归队。
+                    // **唯一例外——决定性崩溃(触底)**:逐兵恐慌四散(IsRunningAway → 吃追击伤害加成)。触底编队不集结
+                    // (Decide/RallySweep 均跳过 Bottomed),故 Panic 后无脱编↔召回对冲。调度器此时也不接管该编队(见 Drive)。
+                    if (st.Bottomed)
+                        snap.Formation.ApplyActionOnEachUnit(_bottomedPanic);
 
                     st.Prev = snap;
                     st.HasPrev = true;
@@ -152,15 +194,16 @@ namespace AnvilAndHammerAI.Morale
         }
 
         /// <summary>
-        /// 决策(纯函数 + 令牌锁存 + 编队级棘轮)。**tier 抗性缩放阈值**(高 tier 编队更难崩);池越阈的**上升沿**触发一次整队溃逃,
-        /// 同时给该编队棘轮升档(满档触底);驻留令牌冷却内既不重复溃逃也不集结;池回落到 阈×ClearFactor 解锁;
-        /// 已触底编队永不集结;非冷却、非触底、非大势已去、且距上次整队溃逃满集结延迟 → 整队集结。
+        /// 决策(纯函数 + 令牌锁存 + 编队级棘轮)。**tier 抗性缩放阈值**(高 tier 更难崩);有效压力越阈的**上升沿**触发一次整队溃逃,
+        /// 并给该编队棘轮升档(满档触底)。**解锁是时间驱动的**:溃逃后维持集结延迟即解锁 → 任何单次溃逃都可恢复重整(无论伤亡/冲锋多重);
+        /// 持久伤亡地板/冲锋震慑不再永久锁死,只让重整后更脆、更易反复再溃 → 反复再溃才经棘轮触底(决定性崩溃,保留功能)。
+        /// 已触底/大势已去 → 不集结;否则(延迟已过)→ 整队集结。
         /// </summary>
         private static Decision Decide(FormationShockState st, float baseThreshold, float avgTier, float now,
             bool letGo, bool ratchet, float rallyDelay)
         {
             float threshold = baseThreshold * TierResist(avgTier);
-            bool over = st.Pool >= threshold;
+            bool over = st.Effective >= threshold; // 有效压力 = 情势池 + 持久伤亡地板 + 冲锋冲击震慑
 
             if (over && !st.RoutLatched)
             {
@@ -181,15 +224,19 @@ namespace AnvilAndHammerAI.Morale
             }
             if (st.RoutLatched)
             {
-                if (st.Pool < threshold * MoraleTuning.RoutLatchClearFactor)
-                    st.RoutLatched = false;     // 解锁:可再溃 / 可集结
-                else
-                    return Decision.None;        // 冷却:不重复压已 panic 成员(防高频翻转喂棘轮飞速触底)
+                // 解锁(集结)需**双闸**:① 时间——溃逃后至少维持 rallyDelay;② 迟滞——**情势池**(远程/级联/包围)须跌回
+                //   阈值×RoutClearFactor 才解锁。缺②会在持续箭雨下"8s 一到就集结、下一拍 Effective≥阈又立即再溃"——
+                //   每拍整队 Panic↔Rally 对冲、反复抖动+卡顿(实测 [tele] rally/routAgents 同窗暴涨到上千)。
+                //   只看**情势池**(不含伤亡地板/冲锋震慑):伤亡地板集结时归零、不该永久锁死解锁;故持续受击的编队保持逃散,
+                //   待火力退去(池衰减到 阈×ClearFactor)才集结;伤亡导致的持久压力仍能在火力停后正常集结(既往不咎)。
+                if (now - st.LastRoutTime < rallyDelay) return Decision.None;                   // ① 溃散时间窗:仍在逃
+                if (st.Pool >= threshold * MoraleTuning.RoutClearFactor) return Decision.None;  // ② 情势压力未退:保持溃逃,不集结(防抖)
+                st.RoutLatched = false;                                                         // 双闸过 → 解锁,落到下方集结
+                st.CasualtyBaseline = st.CasualtyFractionNow;                                   // 重整即"既往不咎":伤亡基准归位 → 伤亡溃逃压力归零,可再战
             }
-            if (st.Bottomed) return Decision.None;                       // 触底:整队不再集结
-            if (letGo) return Decision.None;                            // 大势已去:不为其集结
-            if (now - st.LastRoutTime < rallyDelay) return Decision.None; // 集结延迟(编队级):刚溃逃不立刻拉回
-            return Decision.Rally;
+            if (st.Bottomed) return Decision.None;   // 反复溃逃达档 → 彻底崩溃,不再集结(保留功能;单次溃逃不受此限)
+            if (letGo) return Decision.None;          // 大势已去:不为其集结
+            return Decision.Rally;                    // 重整(逐兵 StopRetreating + 抬士气;RallyAgent 只拉在逃的兵)
         }
 
         /// <summary>
@@ -215,7 +262,11 @@ namespace AnvilAndHammerAI.Morale
                 if (cai == null) continue;
                 if (!(a.IsRunningAway || cai.IsRetreating || cai.IsPanicked)) continue;
                 Formation home = a.Formation;
-                if (home != null && _pool.TryGet(home, out FormationShockState hst))
+                // 脱编逃兵(真逃跑后引擎 OnFleeing 置 a.Formation=null):**不召回**。新模型下脱编逃兵只剩两类——
+                // 决定性崩溃(触底)逐兵恐慌 / vanilla 个体恐慌散兵,二者都该任其溃散。普通溃逃是整队后撤(不脱编),本就不经此处。
+                // 若仍召回会与触底逐兵恐慌每拍 StopRetreating↔Panic 对冲 → 每 0.5s Panic 风暴卡顿(已确认)。
+                if (home == null) continue;
+                if (_pool.TryGet(home, out FormationShockState hst))
                 {
                     if (hst.RoutLatched || hst.Bottomed) continue;     // 母编队正溃逃/已触底 → 尊重编队级决策,不召回
                     if (now - hst.LastRoutTime < rallyDelay) continue;  // 编队级集结延迟内 → 不召回
@@ -228,39 +279,6 @@ namespace AnvilAndHammerAI.Morale
         {
             base.OnEndMission();
             _pool.Reset();
-        }
-
-        /// <summary>
-        /// 逐兵效果施加器(编排胶水)。**可复用 + 缓存委托**:稳态 0 堆分配。
-        /// 决策(Rout/Rally/None)、棘轮档数、集结延迟都已在编队级算好;这里只按决策把整队同一动作落到每个兵。
-        /// </summary>
-        private sealed class AgentEffectApplier
-        {
-            private readonly Action<Agent> _visit;
-
-            private Decision _d;
-            private float _routFloor, _rallyFloor;
-
-            public AgentEffectApplier() { _visit = Visit; }
-
-            public void Begin(Decision d, float routFloor, float rallyFloor)
-            {
-                _d = d; _routFloor = routFloor; _rallyFloor = rallyFloor;
-            }
-
-            public void Run(Formation f) => f.ApplyActionOnEachUnit(_visit);
-
-            private void Visit(Agent a)
-            {
-                if (a == null || !a.IsHuman) return;
-                var cai = a.CommonAIComponent;
-                if (cai == null) return;
-
-                if (_d == Decision.Rout)
-                    MoraleEffects.RoutAgent(a, _routFloor);
-                else if (_d == Decision.Rally)
-                    MoraleEffects.RallyAgent(a, cai, _rallyFloor); // RallyAgent 内部只拉"正在逃"的兵
-            }
         }
     }
 }

@@ -38,10 +38,12 @@
     <string id="AnvilHammer_show_morale_bars_hint" text="Fill each formation's troop-type icon with its team colour in proportion to its morale; the lost part turns dark grey (hold Alt to see the markers, or turn on Always Show Formation Markers below). Shown for both your formations and the enemy's, and drains as a formation nears a mass rout. Default on." />
     <string id="AnvilHammer_always_show_markers" text="Always Show Formation Markers" />
     <string id="AnvilHammer_always_show_markers_hint" text="Keep the formation markers (the troop-type icons above each formation) visible at all times, without holding Alt. Default off." />
+    <string id="AnvilHammer_show_missile_trails" text="Show Arrow Trails" />
+    <string id="AnvilHammer_show_missile_trails_hint" text="Draw a light-grey trail along every arrow, bolt and javelin in flight, kept clearly visible even zoomed out and from the RTS overview (unlike the vanilla trail, which disappears at a distance). Default on." />
 
     <!-- MCM: Rout &amp; Rally -->
     <string id="AnvilHammer_rally_delay" text="Rally Delay (sec)" />
-    <string id="AnvilHammer_rally_delay_hint" text="How long after a formation routs before it tries to steady and rally. Too short = pulled back the instant it routs; too long = can never recover. Default 8." />
+    <string id="AnvilHammer_rally_delay_hint" text="How long after a formation routs before it tries to steady and rally. Too short = pulled back the instant it routs; too long = can never recover. Default 20." />
     <string id="AnvilHammer_rally_morale_floor" text="Rally Morale" />
     <string id="AnvilHammer_rally_morale_floor_hint" text="The morale a formation is restored to when it rallies. Higher = steadier and less likely to rout again at once. Default 25." />
 
@@ -80,6 +82,8 @@
     <string id="AnvilHammer_heavy_cav_charge_mult_hint" text="Impact damage multiplier for a heavy cavalry charge. Heavy cavalry carries great momentum. Default 1.7." />
     <string id="AnvilHammer_heavy_cav_plow_through" text="Heavy Cavalry Plow Through" />
     <string id="AnvilHammer_heavy_cav_plow_through_hint" text="A heavy cavalry charge knocks frontal enemies to the ground, keeping momentum to punch through the line (not halted by standing soldiers, less slowdown). Reflects heavy momentum; off, cavalry is more easily stopped after impact. Only your heavy cavalry, and only knocks down enemies. Default on." />
+    <string id="AnvilHammer_ranged_damage_multiplier" text="Ranged Weapon Damage Multiplier" />
+    <string id="AnvilHammer_ranged_damage_multiplier_hint" text="Damage multiplier for hits from bows, crossbows and thrown weapons (arrows, bolts, javelins). Lower = ranged weapons deal less damage. Default 0.8." />
 
     <!-- MCM: Formation Speed -->
     <string id="AnvilHammer_formation_speed_enabled" text="Adjust Speed by Formation" />
@@ -100,6 +104,8 @@
     <string id="AnvilHammer_pool_decay_per_second_hint" text="How much a formation's pressure fades each second. Higher = fades faster, harder to keep it collapsing, recovers sooner after routing. Default 6." />
     <string id="AnvilHammer_ranged_pressure_enabled" text="Pressure Source: Under Fire" />
     <string id="AnvilHammer_ranged_pressure_enabled_hint" text="Count being volleyed by arrows and javelins toward rout pressure (shield hits, body hits, and arrows landing nearby all count). Default on." />
+    <string id="AnvilHammer_ranged_pressure_intensity" text="Under-Fire Morale Impact (%)" />
+    <string id="AnvilHammer_ranged_pressure_intensity_hint" text="How strongly being shot at saps a formation toward a mass rout. 100% is the (already reduced) default; lower it if arrows rattle your troops too much, raise it to make massed archery break formations faster. Set 0% to remove rout pressure from fire entirely." />
     <string id="AnvilHammer_charge_shock_pressure_enabled" text="Pressure Source: Enemy Cavalry Charge" />
     <string id="AnvilHammer_charge_shock_pressure_enabled_hint" text="Count enemy cavalry charging in at speed toward rout pressure (closer and faster = more intimidating). Default on." />
 
@@ -110,6 +116,7 @@
     <string id="AnvilHammer_reaction_brace" text="Shield Wall" />
     <string id="AnvilHammer_reaction_fallback" text="Fall Back" />
     <string id="AnvilHammer_reaction_counter" text="Counter-Charge" />
+    <string id="AnvilHammer_reaction_rout" text="Routing" />
     <string id="AnvilHammer_reaction_default" text="Respond" />
 
     <!-- Battle narrator: role names -->

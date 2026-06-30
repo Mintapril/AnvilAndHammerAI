@@ -13,7 +13,9 @@ namespace AnvilAndHammerAI.Formations
 {
     /// <summary>
     /// 中央指挥调度器(ADR-0011 第 2 步,**完整版**)。不 subclass TacticComponent:每 0.5s 给 7 角色编队
-    /// ResetBehaviorWeights + 按角色设权(设权频率远高于战术仅切换时设权 → 压制取胜)。
+    /// ResetBehaviorWeights + 按角色设权。**硬接管**:经 <see cref="BehaviorWeightOwnerPatch"/>(配合 <see cref="WeightOwnership"/>),
+    /// 凡被本调度器驱动过的编队,vanilla/RBM 战术层对其行为权重的写入一律跳过 → mod 设权为唯一权威,无两次设权间的夺权窗口
+    /// (取代旧的"设权频率高于战术 → 软压制取胜")。
     ///
     /// 读**完整空间脑**(<see cref="TacticalBrain"/>:定向编队+弧覆盖→突破口+开放弧落点;放锤=突破口逼近崩溃阈值):
     ///   主步兵(砧)= 推进/钉住;弓兵 = 屏射;骑射 = 风筝;
@@ -45,6 +47,7 @@ namespace AnvilAndHammerAI.Formations
         private TickGate _gate = new TickGate(TickInterval);
         private TickGate _logGate = new TickGate(PlanLogInterval);
         private bool _announced;
+        private int _routHeld; // 本拍因士气溃逃而被"停步保持"(不抢回战斗行为)的编队数,供 [sched] 心跳诊断
 
         // 遇袭自发反应的迟滞状态(每编队):记最近一次有威胁的时刻 + 当时的反应模式/目标,
         // 用于"进反应即时、出反应延迟"的去抖(见 ReactionTuning.HoldSeconds)。CWT 随编队 GC 自动回收。
@@ -80,7 +83,7 @@ namespace AnvilAndHammerAI.Formations
                 DriveTeam(team, plan, m);
                 if (logNow)
                     Log.Info($"[sched] side={team.Side} joined={plan.BattleJoined} release={plan.ReleaseHammer} " +
-                             $"poolFrac={plan.TargetPoolFrac:0.00} target={(plan.HasTarget ? plan.Target.FormationIndex.ToString() : "-")}");
+                             $"poolFrac={plan.TargetPoolFrac:0.00} target={(plan.HasTarget ? plan.Target.FormationIndex.ToString() : "-")} routHeld={_routHeld}");
             }
 
             if (!_announced)
@@ -90,8 +93,15 @@ namespace AnvilAndHammerAI.Formations
             }
         }
 
+        protected override void OnEndMission()
+        {
+            base.OnEndMission();
+            WeightOwnership.Clear(); // 释放本场 Formation 引用(权重归属表)
+        }
+
         private void DriveTeam(Team team, BattlePlan plan, Mission m)
         {
+            _routHeld = 0; // 本队本拍诊断计数:几支编队因士气溃逃被停步保持(见 Drive)
             Formation mainInf = team.GetFormation(FormationClass.Infantry);
             Formation flankInf = team.GetFormation(FormationClass.HeavyInfantry);
             Formation archers = team.GetFormation(FormationClass.Ranged);
@@ -165,10 +175,11 @@ namespace AnvilAndHammerAI.Formations
                 Reset(f);
                 if (react && TryReact(f, team, m, ThreatReactionBehavior.Mode.FallBack,
                         ReactionTuning.ArcherFallbackRange, ReactionTuning.ArcherFallbackCavRatio, mainInf))
-                { Say(narrate, f, "react", "fallback", "{=AnvilHammer_msg_archers_fallback}Archers fall back from the cavalry on them"); return; }
+                { ReleaseRangedFocus(f); Say(narrate, f, "react", "fallback", "{=AnvilHammer_msg_archers_fallback}Archers fall back from the cavalry on them"); return; }
                 Say(narrate, f, "react", "", null);
                 W<BehaviorScreenedSkirmish>(f, 1f);
                 W<BehaviorSkirmishLine>(f, 0.5f);
+                ApplyRangedFocus(f, ChooseRangedTarget(plan)); // 整队硬锁定聚焦突破口(编队级索敌)
             });
 
             // 骑射:风筝。被敌近战骑兵贴上(失去风筝空间)→ 朝主步兵后方撤离。
@@ -177,12 +188,13 @@ namespace AnvilAndHammerAI.Formations
                 Reset(f);
                 if (react && TryReact(f, team, m, ThreatReactionBehavior.Mode.FallBack,
                         ReactionTuning.ArcherFallbackRange, ReactionTuning.ArcherFallbackCavRatio, mainInf))
-                { Say(narrate, f, "react", "fallback", "{=AnvilHammer_msg_horse_archers_fallback}Horse archers fall back from the cavalry on them"); return; }
+                { ReleaseRangedFocus(f); Say(narrate, f, "react", "fallback", "{=AnvilHammer_msg_horse_archers_fallback}Horse archers fall back from the cavalry on them"); return; }
                 Say(narrate, f, "react", "", null);
                 // 自有风筝:把骑射带到**距敌射程边缘**处、沿敌正面横向扫掠("绕圈"),全程整队放箭、接敌宽度匹配敌编队。
                 // 不用 vanilla——BehaviorHorseArcherSkirmish 会退到我方后方 30m+ 放箭(不是绕敌);BehaviorMountedSkirmish 接战时散队自由冲锋(违规)。
                 EnsureKite(f);
                 W<HorseArcherKiteBehavior>(f, 1f);
+                ApplyRangedFocus(f, ChooseRangedTarget(plan)); // 整队硬锁定聚焦突破口(风筝管走位,这管打谁)
             });
 
             // 左轻骑(优先级):掩护我方步兵(防守,最高)> 追击残兵(敌已溃逃约一支)> 绕击突破口左翼(权重低)> 护侧。
@@ -285,7 +297,7 @@ namespace AnvilAndHammerAI.Formations
             else if (st.Mode == ThreatReactionBehavior.Mode.Brace)
             {
                 // 被多面夹击则结 Square(全向)。仅在确实要架枪时扫一次几何环绕,避免每拍空算。
-                enveloped = _scanner.Scan(f, team).OccupiedSectors >= MoraleTuning.EncircleMinSectors;
+                enveloped = _scanner.Scan(f).OccupiedSectors >= MoraleTuning.EncircleMinSectors;
             }
             b.SetReaction(st.Mode, st.Threat, st.ThreatPos, true, rally, hasRally, enveloped);
             W<ThreatReactionBehavior>(f, ReactionTuning.ReactionWeight);
@@ -300,7 +312,7 @@ namespace AnvilAndHammerAI.Formations
         }
 
         // ── 设权小工具(全部 GetBehavior 守卫,防 SetBehaviorWeight 抛 MBException) ──
-        private static void Drive(Formation f, Action<Formation> act)
+        private void Drive(Formation f, Action<Formation> act)
         {
             if (f == null || f.CountOfUnits == 0 || f.AI == null) return;
             // 玩家亲自接管的编队让行(仅 RespectPlayerOrders 开时):此时不 Reset/设权,避免抹掉玩家意图。
@@ -308,7 +320,19 @@ namespace AnvilAndHammerAI.Formations
             // 关键:本 mod 靠**设行为权重**指挥,而权重**只对 AI 控制的编队生效**。若编队被 RTS Camera/指挥盘接管成非 AI
             // (IsAIControlled=false),设了权重也不响应 → 站着发呆。故在驱动前夺回 AI 控制,使权重生效(RespectPlayerOrders 关时本 mod 全程接管指挥)。
             if (!f.IsAIControlled) f.SetControlledByAI(true);
-            act(f);
+            // 与士气层协调:本编队正处士气溃逃锁存(RoutLatched)中 → 不抢回战斗行为,改为**整队有序后撤**(见 HoldRout)。
+            // 编队保持成建制(逐兵不 Panic、不脱编)→ Pass A 仍扫描它、脱离火力后情势池衰减解锁集结;集结后常规设权自动覆盖。
+            FormationShockState st = null;
+            bool routed = _pool != null && _pool.TryGet(f, out st) && st.RoutLatched;
+            // 决定性崩溃(触底):逐兵恐慌四散由士气层处理(触底不集结,无脱编↔召回对冲),调度器不接管、任其溃散。
+            if (routed && st.Bottomed) return;
+            if (routed) _routHeld++;
+            // 硬接管权重:标记"以下为 mod 自身写入"(BehaviorWeightOwnerPatch 放行),写完记录本编队最近设权时刻 →
+            // 该 patch 据此把 vanilla/RBM 对本编队的设权全部跳过,消除两次设权之间的夺权窗口。
+            WeightOwnership.ModStamping = true;
+            try { if (routed) HoldRout(f); else act(f); }
+            finally { WeightOwnership.ModStamping = false; }
+            WeightOwnership.MarkStamped(f, Mission.Current.CurrentTime);
         }
 
         private static void Reset(Formation f) { f.AI.ResetBehaviorWeights(); }
@@ -327,11 +351,72 @@ namespace AnvilAndHammerAI.Formations
                 f.AI.AddAiBehavior(new HorseArcherKiteBehavior(f));
         }
 
+        private readonly List<Agent> _focusBuf = new List<Agent>(); // 复用:目标编队活体 agent 列表(避免每拍分配)
+
+        // 远程编队级**硬锁定**索敌:整支远程编队的每个 agent 强制索敌目标编队 target 内的敌兵(在其活体间轮流分摊,
+        // 避免全打一个、一死全空),并关掉自动索敌防原生/RBM 改回 → 真正"禁止同编队各打各的"。
+        // (SetTargetFormation 只是索敌"偏好",原生仍可能打更近的,实测不够,故升级为此逐兵硬锁。)target 为空 → 释放,见 ReleaseRangedFocus。
+        private void ApplyRangedFocus(Formation f, Formation target)
+        {
+            if (f == null) return;
+            if (target == null || target.CountOfUnits <= 0) { ReleaseRangedFocus(f); return; }
+            if (f.TargetFormation != target) f.SetTargetFormation(target); // 编队级目标(供其它系统读),与逐兵硬锁互补
+
+            _focusBuf.Clear();
+            target.ApplyActionOnEachUnit(a => { if (a != null && a.IsActive()) _focusBuf.Add(a); });
+            int n = _focusBuf.Count;
+            if (n == 0) { ReleaseRangedFocus(f); return; }
+
+            int next = 0;
+            f.ApplyActionOnEachUnit(a =>
+            {
+                if (a == null || !a.IsActive()) return;
+                Agent cur = a.GetTargetAgent();
+                if (cur == null || !cur.IsActive() || cur.Formation != target)
+                    a.SetTargetAgent(_focusBuf[next++ % n]); // 现目标不在 target 内 → 改派 target 内一个(轮流)
+                a.SetAutomaticTargetSelection(false);          // 关自动索敌:锁住不让原生改回别的编队
+            });
+        }
+
+        // 释放远程硬锁:开回自动索敌(被骑兵贴身/溃逃时能自卫、能正常索敌),清编队级目标。对未锁过的编队也安全(开回自动=默认态)。
+        private static void ReleaseRangedFocus(Formation f)
+        {
+            if (f == null) return;
+            if (f.TargetFormation != null) f.SetTargetFormation(null);
+            f.ApplyActionOnEachUnit(a => { if (a != null) a.SetAutomaticTargetSelection(true); });
+        }
+
+        private static Formation ChooseRangedTarget(BattlePlan plan)
+        {
+            if (plan != null)
+            {
+                if (plan.HasTarget && plan.Target != null && plan.Target.CountOfUnits > 0) return plan.Target;
+                if (plan.AnvilTarget != null && plan.AnvilTarget.CountOfUnits > 0) return plan.AnvilTarget;
+            }
+            return null;
+        }
+
         // 追击:整队 BehaviorCharge(无最近敌编队时它会下 MovementOrderCharge,直冲最近散兵 → 追溃逃残敌)。仅敌军已崩时给轻骑调用。
-        private static void PursueCharge(Formation f) => Drive(f, ff => { Reset(ff); W<BehaviorCharge>(ff, 2f); });
+        private void PursueCharge(Formation f) => Drive(f, ff => { Reset(ff); W<BehaviorCharge>(ff, 2f); });
 
         // 就地收拢:停在原地结阵自由射击,不追击、不乱跑(追击阶段给步兵/重骑/弓兵/骑射用,使追击成为轻骑专责)。
-        private static void HoldGround(Formation f) => Drive(f, ff => { Reset(ff); W<BehaviorStop>(ff, 1f); });
+        private void HoldGround(Formation f) => Drive(f, ff => { Reset(ff); W<BehaviorStop>(ff, 1f); });
+
+        // 溃逃后撤:士气溃逃锁存中的编队 → 整队有序后撤(复用 ThreatReactionBehavior 的 FallBack:散开、背离最近敌编队、面朝敌)。
+        // 不逐兵 Panic、不脱编 → 编队成建制、Pass A 仍扫描它,脱离火力后情势池衰减、集结(RoutLatched 解除)即恢复战斗;挂载失败退回停步。
+        private void HoldRout(Formation f)
+        {
+            Reset(f);
+            ReleaseRangedFocus(f); // 溃逃时释放远程硬锁:开回自动索敌,不让溃兵呆滞死盯远处目标
+            EnsureReaction(f);
+            var b = f.AI.GetBehavior<ThreatReactionBehavior>();
+            if (b == null) { W<BehaviorStop>(f, 1f); return; }
+            Mission m = Mission.Current;
+            Formation threat = m != null ? EnemyFormations.Nearest(f, m) : null;
+            Vec2 tpos = threat != null ? threat.CachedAveragePosition : f.CachedAveragePosition;
+            b.SetReaction(ThreatReactionBehavior.Mode.Rout, threat, tpos, threat != null, Vec2.Zero, false, false);
+            W<ThreatReactionBehavior>(f, ReactionTuning.ReactionWeight);
+        }
 
         private static void W<T>(Formation f, float w) where T : BehaviorComponent
         {

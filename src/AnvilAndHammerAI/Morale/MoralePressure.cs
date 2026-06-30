@@ -17,25 +17,9 @@ namespace AnvilAndHammerAI.Morale
         float Sample(in FormationSnapshot now, in FormationSnapshot prev, in TeamMoraleContext team, float dt);
     }
 
-    /// <summary>
-    /// ① 伤亡压力:QuerySystem 的**存活/战力比下降速率**(tick 间差分),短时间大量减员→高压力。
-    /// 关键 1:用 tick 级差分,**不在高频 CalculateDamage postfix 里累加**(避免锁竞争/无界增长)。
-    /// 关键 2(反编译核实):<c>CasualtyRatio = 1 − 伤亡/(伤亡+存活)</c> 是**存活比**(满编=1,减员→0),
-    /// 不是累计伤亡比——所以"在掉人"对应该值**下降**,压力取下降量(prev−now),不是上升量。
-    /// </summary>
-    public sealed class CasualtyPressure : IMoralePressure
-    {
-        public string Tag => "cas";
-        public bool IsEnabled => true;
-
-        public float Sample(in FormationSnapshot now, in FormationSnapshot prev, in TeamMoraleContext team, float dt)
-        {
-            if (dt <= 0f) return 0f;
-            float drop = prev.CasualtyRatio - now.CasualtyRatio; // 存活比下降 = 本拍刚损失的比例
-            if (drop <= 0f) return 0f;                            // 只对"在掉人"施压
-            return MoraleTuning.CasualtyGain * (drop / dt);       // 损失比/秒 × 增益
-        }
-    }
+    // 注:伤亡不再是"瞬时压力源"——已改为编排层每拍按 (1−存活比) 计算的**持久地板**(见 FormationMoraleMissionLogic)。
+    // 冲锋不再是"逼近代理源"——已改为 ChargeImpactSensor 监听真实背/侧冲命中累加、编排层直接写入的 ChargeShock。
+    // 故本文件只剩三个**情势型**源(级联/包围/远程):它们反映"当前态势",每拍 Sample → 积分进情势池 → 每秒衰减。
 
     /// <summary>
     /// ② 溃逃级联:同队**邻编队**的溃逃比例(饱和 + cap)。仅"邻→本",本编队自身溃逃**不回灌**自己的池,
@@ -95,34 +79,11 @@ namespace AnvilAndHammerAI.Morale
         public float Sample(in FormationSnapshot now, in FormationSnapshot prev, in TeamMoraleContext team, float dt)
         {
             float threat = _sensor != null ? _sensor.GetThreat(now.Formation) : 0f;
-            return threat > 0f ? MoraleTuning.RangedGain * threat : 0f;
-        }
-    }
-
-    /// <summary>
-    /// ⑤ 冲锋震慑:有高速逼近、距离较近的敌"近战骑兵"编队即施压。距离=快照 NearestEnemyCavDist,
-    /// 逼近速度=now/prev 距离差分(/秒);压力 = 增益 × min(逼近速度,上限) × 贴近度(越近越强)。
-    /// 不够近 / 不够快 / 在远离 → 0。骑兵 AI 重写后可由专用 CavalryChargePressure 替换/补充。
-    /// </summary>
-    public sealed class ChargeShockPressure : IMoralePressure
-    {
-        public string Tag => "chg";
-        public bool IsEnabled => AnvilSettings.Instance?.ChargeShockPressureEnabled == true;
-
-        public float Sample(in FormationSnapshot now, in FormationSnapshot prev, in TeamMoraleContext team, float dt)
-        {
-            if (dt <= 0f) return 0f;
-            float d = now.NearestEnemyCavDist;
-            if (d >= MoraleTuning.ChargeShockDistance) return 0f;            // 不够近 / 无敌骑
-            float pd = prev.NearestEnemyCavDist;
-            if (pd >= MoraleTuning.ChargeShockDistance * 2f) return 0f;      // 上拍还很远/无 → 本拍不算(等下拍有有效 prev)
-
-            float closing = (pd - d) / dt;                                  // 逼近速度(m/s),<0=在远离
-            if (closing < MoraleTuning.ChargeShockMinClosingSpeed) return 0f;
-            if (closing > MoraleTuning.ChargeShockMaxClosingSpeed) closing = MoraleTuning.ChargeShockMaxClosingSpeed;
-
-            float proximity = 1f - d / MoraleTuning.ChargeShockDistance;    // 0..1,越近越强
-            return MoraleTuning.ChargeShockGain * closing * proximity;
+            if (threat <= 0f || now.Count <= 0) return 0f;
+            // **按编队人数归一化**为"每兵威胁":匹配参考值 #4"本编队人数×10 箭→溃"(rout 触发的是每兵箭量,不随编队大小变化)。
+            // 末项:MCM「挨射士气影响」百分比(默认 100% = 基线;玩家可 0% 关停到数倍放大)。
+            float intensity = (AnvilSettings.Instance?.RangedPressureIntensity ?? 100f) * 0.01f;
+            return MoraleTuning.RangedGain * threat / now.Count * intensity;
         }
     }
 }

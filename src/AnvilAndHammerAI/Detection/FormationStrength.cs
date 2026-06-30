@@ -5,13 +5,16 @@ using TaleWorlds.MountAndBlade;
 namespace AnvilAndHammerAI.Detection
 {
     /// <summary>
-    /// 编队级"兵力值"的**唯一**度量 = Σ每名存活士兵的 battle tier(= 兵数 × 平均 tier)。
-    /// 精锐按更高权重计:同样人数,高 tier 编队兵力值更高。
+    /// 编队级"兵力值"的**唯一**度量 = Σ每名存活士兵的 battle tier,骑乘单位再 ×<see cref="CavalryStrengthMultiplier"/>。
+    /// 精锐按更高权重计(同样人数,高 tier 兵力值更高);骑兵按更高权重计(用户定:同 tier 1 骑 = 3 步)。
     /// 全 mod 里所有"按规模/兵力"的比较(敌骑威胁、突破口显著性、左右翼/主侧均衡)统一对比此值,避免各处口径不一。
     /// 主线程串行复用静态累加器,零每次分配(委托只建一次);Visit 不重入,故共享静态安全。
     /// </summary>
     public static class FormationStrength
     {
+        /// <summary>同 tier 骑兵兵力值 = 步兵 × 此倍数(用户定:1 骑 = 3 步)。所有骑乘单位(含骑射)按此放大。</summary>
+        public const int CavalryStrengthMultiplier = 3;
+
         private static int _sum;
         private static readonly Action<Agent> _visit = Visit;
 
@@ -37,7 +40,9 @@ namespace AnvilAndHammerAI.Detection
         {
             if (a == null || !a.IsHuman) return;
             var ch = a.Character;
-            _sum += ch != null ? ch.GetBattleTier() : 0;
+            int t = ch != null ? ch.GetBattleTier() : 0;
+            if (a.HasMount) t *= CavalryStrengthMultiplier; // 骑兵兵力值 ×3(同 tier 1 骑 = 3 步)
+            _sum += t;
         }
     }
 }

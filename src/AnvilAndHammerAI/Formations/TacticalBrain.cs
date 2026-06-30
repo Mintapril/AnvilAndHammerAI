@@ -63,7 +63,7 @@ namespace AnvilAndHammerAI.Formations
             // 敌方溃逃情况(须在下方"无显著敌编队即提前返回"之前算好:敌兵溃逃后脱编 → 敌编队变空 →
             // maxEnemyStrength<=0 提前返回,但那些散兵仍活着 IsRunningAway,正是要追击的对象)。
             // Pursue = 全线追击(团队级);LightCavPursue = 已有约一支编队崩 → 轻骑随时脱离追残兵。
-            EnemyRoutInfo(myTeam, m, out plan.Pursue, out float routingFrac);
+            EnemyRoutInfo(myTeam, m, pool, out plan.Pursue, out float routingFrac);
             plan.LightCavPursue = routingFrac >= LightCavPursueFraction;
 
             // "显著"敌编队按兵力值的相对比值挑(替代硬编码绝对人数):先求最大敌编队兵力值作基准。
@@ -117,10 +117,10 @@ namespace AnvilAndHammerAI.Formations
 
                 // 该敌编队"距崩溃"比例 = 池 / (基阈 × 它的 tier 抗性)。池由编队级士气系统写入(对双方恒生效),
                 // 故任何显著敌编队经首拍士气结算后都有池;TryGet 仅防开局头一拍竞态(此时 release=false,无碍)。
-                FormationSnapshot snap = scanner.Scan(E, E.Team);
+                FormationSnapshot snap = scanner.Scan(E);
                 FormationShockState st = null;
                 bool poolLive = pool != null && pool.TryGet(E, out st);
-                float ePool = poolLive ? st.Pool : 0f;
+                float ePool = poolLive ? st.Effective : 0f; // 有效压力(池+伤亡地板+冲锋震慑):目标被打残/被冲也计入"逼近崩溃"
                 float threshold = MoraleTuning.RoutThreshold(baseRoutThreshold, snap.AvgTier);
                 float poolFrac = threshold > 0f ? ePool / threshold : 0f;
 
@@ -198,7 +198,7 @@ namespace AnvilAndHammerAI.Formations
         /// broken = 溃逃比 ≥ PursueRoutingFraction(敌军已崩,全线追击);routingFrac 另供"轻骑随时追残"判据(LightCavPursueFraction)。
         /// 敌兵溃逃后脱离编队 → 敌编队人数清零,但散兵仍在 ActiveAgents,正是要追击的对象。
         /// </summary>
-        private static void EnemyRoutInfo(Team myTeam, Mission m, out bool broken, out float routingFrac)
+        private static void EnemyRoutInfo(Team myTeam, Mission m, FormationShockPool pool, out bool broken, out float routingFrac)
         {
             int alive = 0, routing = 0;
             foreach (Team t in m.Teams)
@@ -208,7 +208,12 @@ namespace AnvilAndHammerAI.Formations
                 {
                     if (a == null || !a.IsHuman) continue;
                     alive++;
-                    if (a.IsRunningAway) routing++;
+                    // 可追击 = 逐兵真逃跑(触底四散 / vanilla 恐慌) **或** 所属编队正整队溃逃后撤(RoutLatched,背敌奔退)。
+                    // 后者是新溃逃模型的常态(普通溃逃不脱编、不 IsRunningAway),不计入则轻骑追击触发不了(回归修复)。
+                    if (a.IsRunningAway) { routing++; continue; }
+                    Formation home = a.Formation;
+                    if (home != null && pool != null && pool.TryGet(home, out FormationShockState st) && st.RoutLatched)
+                        routing++;
                 }
             }
             routingFrac = alive > 0 ? (float)routing / alive : 0f;

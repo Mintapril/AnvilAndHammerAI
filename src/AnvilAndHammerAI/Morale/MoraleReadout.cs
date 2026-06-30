@@ -32,10 +32,24 @@ namespace AnvilAndHammerAI.Morale
             float eff = MoraleTuning.RoutThreshold(baseThreshold, avgTier);
             if (eff <= 0f) return false;
 
-            float frac = st.Pool / eff;
+            float frac = st.Effective / eff; // 有效压力 = 情势池 + 伤亡溃逃压力 + 冲锋冲击震慑(与决策门同口径)
             if (frac < 0f) frac = 0f; else if (frac > 1f) frac = 1f;
             remaining01 = 1f - frac;
+
+            // "接战过不可能满士气":士气条**上限 = 存活比**(= 1 − 累计伤亡比),与"是否在溃逃边缘"解耦。
+            // 重整后伤亡压力虽归零(可再战),但只要有过伤亡,条就填不满;伤亡越多上限越低。
+            float survivalCap = 1f - st.CasualtyFractionNow;
+            if (survivalCap < 0f) survivalCap = 0f;
+            if (remaining01 > survivalCap) remaining01 = survivalCap;
             return true;
+        }
+
+        /// <summary>f 是否处于溃逃中(普通溃逃锁存 <see cref="FormationShockState.RoutLatched"/> 或决定性崩溃触底 <see cref="FormationShockState.Bottomed"/>)。供 UI 给图标做溃逃闪烁。</summary>
+        public static bool IsRouting(Formation f)
+        {
+            if (_pool == null || f == null) return false;
+            if (!_pool.TryGet(f, out FormationShockState st)) return false;
+            return st.RoutLatched || st.Bottomed;
         }
     }
 }

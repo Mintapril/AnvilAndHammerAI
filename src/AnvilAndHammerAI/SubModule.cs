@@ -72,6 +72,7 @@ namespace AnvilAndHammerAI
             //   · 中央调度器读作放锤判据(突破口震慑池逼近崩溃阈值)。
             var shockPool = new FormationShockPool();
             var rangedSensor = new RangedThreatSensor();
+            var chargeSensor = new ChargeImpactSensor();
 
             // 把共享池交给只读士气读出口,供编队标记士气条(UI mixin)按编队取剩余士气。
             MoraleReadout.Register(shockPool);
@@ -85,14 +86,20 @@ namespace AnvilAndHammerAI
             // 受远程攻击传感器:监听箭矢/标枪碰撞(命中盾牌/士兵 + 附近落点),喂"受远程攻击"压力源。先挂以便首帧起计。
             mission.AddMissionBehavior(rangedSensor);
 
+            // 冲锋冲击传感器:监听真实骑兵冲撞命中(IsHorseCharge,按角色×方向累加、慢衰减),喂"冲锋冲击"震慑。先挂以便首帧起计。
+            mission.AddMissionBehavior(chargeSensor);
+
             // 编队级士气层(替代旧 MoraleBackbone):传感器→压力→池→决策→效果。先于诊断挂,保证诊断读到本 tick 池值/遥测。
-            mission.AddMissionBehavior(new FormationMoraleMissionLogic(shockPool, rangedSensor));
+            mission.AddMissionBehavior(new FormationMoraleMissionLogic(shockPool, rangedSensor, chargeSensor));
 
             // 只读诊断(5 秒写日志:编队士气/池 + per-side 逃兵比例 + 子系统心跳)。
             mission.AddMissionBehavior(new AnvilDiagnosticsMissionLogic(shockPool));
 
             // D 战斗结束安全(只护本方未触底逃兵不 fade-out;敌方/触底编队放行)。
             mission.AddMissionBehavior(new BattleEndSafetyMissionLogic(shockPool));
+
+            // 箭矢轨迹可视化(纯渲染,每帧画在飞导弹的世界空间彩色线段;受 MCM「显示箭矢轨迹」+ IsFieldBattle 门控)。
+            mission.AddMissionBehavior(new Detection.MissileTrailMissionLogic());
         }
 
         /// <summary>

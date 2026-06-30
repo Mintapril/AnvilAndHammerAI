@@ -62,10 +62,14 @@ namespace AnvilAndHammerAI.Settings
         [SettingPropertyGroup("{=AnvilHammer_group_battle_ui}Battle Display", GroupOrder = 1)]
         public bool AlwaysShowFormationMarkers { get; set; } = false;
 
+        [SettingPropertyBool("{=AnvilHammer_show_missile_trails}Show Arrow Trails", Order = 2, RequireRestart = false, HintText = "{=AnvilHammer_show_missile_trails_hint}Draw a light-grey trail along every arrow, bolt and javelin in flight, kept clearly visible even zoomed out and from the RTS overview (unlike the vanilla trail, which disappears at a distance). Default on.")]
+        [SettingPropertyGroup("{=AnvilHammer_group_battle_ui}Battle Display", GroupOrder = 1)]
+        public bool ShowMissileTrails { get; set; } = true;
+
         // ---------------- 溃逃与集结 ----------------
-        [SettingPropertyFloatingInteger("{=AnvilHammer_rally_delay}Rally Delay (sec)", 0.5f, 15f, "0.0", Order = 0, RequireRestart = false, HintText = "{=AnvilHammer_rally_delay_hint}How long after a formation routs before it tries to steady and rally. Too short = pulled back the instant it routs; too long = can never recover. Default 8.")]
+        [SettingPropertyFloatingInteger("{=AnvilHammer_rally_delay}Rally Delay (sec)", 0.5f, 30f, "0.0", Order = 0, RequireRestart = false, HintText = "{=AnvilHammer_rally_delay_hint}How long after a formation routs before it tries to steady and rally. Too short = pulled back the instant it routs; too long = can never recover. Default 20.")]
         [SettingPropertyGroup("{=AnvilHammer_group_rout_rally}Rout & Rally", GroupOrder = 2)]
-        public float RallyDelaySeconds { get; set; } = 8f;
+        public float RallyDelaySeconds { get; set; } = 20f;
 
         [SettingPropertyFloatingInteger("{=AnvilHammer_rally_morale_floor}Rally Morale", 5f, 80f, "0.0", Order = 1, RequireRestart = false, HintText = "{=AnvilHammer_rally_morale_floor_hint}The morale a formation is restored to when it rallies. Higher = steadier and less likely to rout again at once. Default 25.")]
         [SettingPropertyGroup("{=AnvilHammer_group_rout_rally}Rout & Rally", GroupOrder = 2)]
@@ -134,6 +138,10 @@ namespace AnvilAndHammerAI.Settings
         [SettingPropertyGroup("{=AnvilHammer_group_casualty}Casualty Distribution", GroupOrder = 5)]
         public bool HeavyCavPlowThrough { get; set; } = true;
 
+        [SettingPropertyFloatingInteger("{=AnvilHammer_ranged_damage_multiplier}Ranged Weapon Damage Multiplier", 0.2f, 1.5f, "0.00", Order = 12, RequireRestart = false, HintText = "{=AnvilHammer_ranged_damage_multiplier_hint}Damage multiplier for hits from bows, crossbows and thrown weapons (arrows, bolts, javelins). Lower = ranged weapons deal less damage. Default 0.8.")]
+        [SettingPropertyGroup("{=AnvilHammer_group_casualty}Casualty Distribution", GroupOrder = 5)]
+        public float RangedDamageMultiplier { get; set; } = 0.8f;
+
         // ---------------- 编队速度 ----------------
         [SettingPropertyBool("{=AnvilHammer_formation_speed_enabled}Adjust Speed by Formation", Order = 0, RequireRestart = false, HintText = "{=AnvilHammer_formation_speed_enabled_hint}Fine-tune speed by role: flank infantry faster to get around, light cavalry and horse archers faster to maneuver, heavy cavalry a touch slower. Off = vanilla speeds. Default on.")]
         [SettingPropertyGroup("{=AnvilHammer_group_speed}Formation Speed", GroupOrder = 7)]
@@ -160,7 +168,7 @@ namespace AnvilAndHammerAI.Settings
         [SettingPropertyGroup("{=AnvilHammer_group_morale}Mass Rout (Morale)", GroupOrder = 6)]
         public float PoolRoutThreshold { get; set; } = MoraleTuning.PoolRoutThresholdDefault;
 
-        [SettingPropertyFloatingInteger("{=AnvilHammer_pool_decay_per_second}Pressure Decay (per sec)", 1f, 30f, "0.0", Order = 2, RequireRestart = false, HintText = "{=AnvilHammer_pool_decay_per_second_hint}How much a formation's pressure fades each second. Higher = fades faster, harder to keep it collapsing, recovers sooner after routing. Default 6.")]
+        [SettingPropertyFloatingInteger("{=AnvilHammer_pool_decay_per_second}Pressure Decay (per sec)", 1f, 30f, "0.0", Order = 2, RequireRestart = false, HintText = "{=AnvilHammer_pool_decay_per_second_hint}How fast the pressure from being under fire or surrounded fades each second. Higher = fades faster. (Pressure from casualties stays as a lasting morale loss and does not fade.) Default 3.")]
         [SettingPropertyGroup("{=AnvilHammer_group_morale}Mass Rout (Morale)", GroupOrder = 6)]
         public float PoolDecayPerSecond { get; set; } = MoraleTuning.PoolDecayPerSecondDefault;
 
@@ -168,7 +176,11 @@ namespace AnvilAndHammerAI.Settings
         [SettingPropertyGroup("{=AnvilHammer_group_morale}Mass Rout (Morale)", GroupOrder = 6)]
         public bool RangedPressureEnabled { get; set; } = true;
 
-        [SettingPropertyBool("{=AnvilHammer_charge_shock_pressure_enabled}Pressure Source: Enemy Cavalry Charge", Order = 4, RequireRestart = false, HintText = "{=AnvilHammer_charge_shock_pressure_enabled_hint}Count enemy cavalry charging in at speed toward rout pressure (closer and faster = more intimidating). Default on.")]
+        [SettingPropertyFloatingInteger("{=AnvilHammer_ranged_pressure_intensity}Under-Fire Morale Impact (%)", 0f, 300f, "0", Order = 5, RequireRestart = false, HintText = "{=AnvilHammer_ranged_pressure_intensity_hint}How strongly being shot at saps a formation toward a mass rout. 100% is the (already reduced) default; lower it if arrows rattle your troops too much, raise it to make massed archery break formations faster. Set 0% to remove rout pressure from fire entirely.")]
+        [SettingPropertyGroup("{=AnvilHammer_group_morale}Mass Rout (Morale)", GroupOrder = 6)]
+        public float RangedPressureIntensity { get; set; } = 100f;
+
+        [SettingPropertyBool("{=AnvilHammer_charge_shock_pressure_enabled}Pressure Source: Enemy Cavalry Charge", Order = 4, RequireRestart = false, HintText = "{=AnvilHammer_charge_shock_pressure_enabled_hint}Count enemy cavalry charges that crash into a formation toward rout pressure — hits from the flank or rear shake it far more than a head-on charge, and heavy cavalry hit harder than light. Default on.")]
         [SettingPropertyGroup("{=AnvilHammer_group_morale}Mass Rout (Morale)", GroupOrder = 6)]
         public bool ChargeShockPressureEnabled { get; set; } = true;
 
@@ -180,7 +192,7 @@ namespace AnvilAndHammerAI.Settings
             $"| ratchet={RatchetEnabled} decay={RatchetDecayPerBreak:0.00} " +
             $"| safety={SafetyEnabled} " +
             $"| casualty={CasualtyEnabled} stand={StandMultiplier:0.00} pursuit={PursuitMultiplier:0.0} rear={RearMultiplier:0.0} kill={PursuitGuaranteedKill} " +
-            $"| poolThr={PoolRoutThreshold:0.0} poolDecay={PoolDecayPerSecond:0.0} ranged={RangedPressureEnabled} charge={ChargeShockPressureEnabled} " +
+            $"| poolThr={PoolRoutThreshold:0.0} poolDecay={PoolDecayPerSecond:0.0} ranged={RangedPressureEnabled}/{RangedPressureIntensity:0}% charge={ChargeShockPressureEnabled} " +
             $"| respectPlayer={RespectPlayerOrders} side={SideMultiplier:0.00} flankRear={FlankRearMultiplier:0.00} flankSide={FlankSideMultiplier:0.00} cavCharge={ChargeMomentumEnabled}(l={LightCavChargeMult:0.00} h={HeavyCavChargeMult:0.00} plow={HeavyCavPlowThrough}) " +
             $"| speed={FormationSpeedEnabled}(fInf={FlankInfantrySpeedMult:0.00} lcav={LightCavSpeedMult:0.00} ha={HorseArcherSpeedMult:0.00} hcav={HeavyCavSpeedMult:0.00})";
     }

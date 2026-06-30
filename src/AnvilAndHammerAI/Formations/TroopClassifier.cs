@@ -25,8 +25,9 @@ namespace AnvilAndHammerAI.Formations
 
     public static class TroopClassifier
     {
-        /// <summary>tier ≥ 此值 = 重骑(锤);1..4 = 轻骑。用户锁定:轻 1-4 / 重 5-6。</summary>
-        public const int HeavyCavMinTier = 5;
+        /// <summary>tier ≥ 此值 = 重骑(锤);其余 = 轻骑。用户锁定:轻 1-5 / 重 6
+        /// (仅顶级精英为锤;tier5 归轻骑两翼,使全精英骑兵军仍能分出左右轻骑两翼)。</summary>
+        public const int HeavyCavMinTier = 6;
 
         /// <summary>角色 → FormationClass 槽。</summary>
         public static FormationClass SlotFor(TacRole r)
@@ -76,7 +77,7 @@ namespace AnvilAndHammerAI.Formations
             MissionEquipment eq = a.Equipment;
             if (eq == null) return false;
             bool hadRanged = false;
-            for (EquipmentIndex i = EquipmentIndex.Weapon0; i <= EquipmentIndex.Weapon3; i++)
+            for (EquipmentIndex i = EquipmentIndex.Weapon0; i <= EquipmentIndex.ExtraWeaponSlot; i++)
             {
                 MissionWeapon w = eq[i];
                 if (w.IsEmpty) continue;

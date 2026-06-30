@@ -13,7 +13,6 @@ namespace AnvilAndHammerAI.Detection
     public readonly struct FormationSnapshot
     {
         public readonly Formation Formation;
-        public readonly Team Team;
         public readonly int Count;            // 活跃 human 单位数
         public readonly int RoutingCount;     // IsRunningAway 数
         public readonly float AvgMorale;      // 平均士气
@@ -21,16 +20,13 @@ namespace AnvilAndHammerAI.Detection
         public readonly int LocalEnemyCount;  // 近距敌单位数(30m 内,按需重算)
         public readonly int OccupiedSectors;  // 被敌占的方向扇区数(几何环绕;≥MinPerSector 敌的扇区计 1)
         public readonly float AvgTier;         // 编队平均兵种 tier(GetBattleTier);供 tier 抗性
-        public readonly float NearestEnemyCavDist; // 到最近敌"近战骑兵"编队中心的水平距离(m);无则 float.MaxValue
 
-        public FormationSnapshot(Formation formation, Team team, int count, int routingCount,
-            float avgMorale, float casualtyRatio, int localEnemyCount, int occupiedSectors, float avgTier,
-            float nearestEnemyCavDist)
+        public FormationSnapshot(Formation formation, int count, int routingCount,
+            float avgMorale, float casualtyRatio, int localEnemyCount, int occupiedSectors, float avgTier)
         {
-            Formation = formation; Team = team; Count = count; RoutingCount = routingCount;
+            Formation = formation; Count = count; RoutingCount = routingCount;
             AvgMorale = avgMorale; CasualtyRatio = casualtyRatio;
             LocalEnemyCount = localEnemyCount; OccupiedSectors = occupiedSectors; AvgTier = avgTier;
-            NearestEnemyCavDist = nearestEnemyCavDist;
         }
 
         public float RoutingFraction => Count > 0 ? (float)RoutingCount / Count : 0f;
@@ -81,7 +77,7 @@ namespace AnvilAndHammerAI.Detection
             if (ch != null) { _tierSum += ch.GetBattleTier(); _tierCount++; }
         }
 
-        public FormationSnapshot Scan(Formation f, Team team)
+        public FormationSnapshot Scan(Formation f)
         {
             _count = 0; _routing = 0; _moraleSum = 0f; _tierSum = 0; _tierCount = 0;
             f.ApplyActionOnEachUnit(_visit);
@@ -96,10 +92,7 @@ namespace AnvilAndHammerAI.Detection
             int enemies = localEnemies?.Count ?? 0;
             int occupied = ComputeOccupiedSectors(localEnemies, f.CachedAveragePosition); // 几何环绕:被占方向数
 
-            float nearestCav = NearestEnemyCavalryDistance(f, team);
-
-            return new FormationSnapshot(f, team, _count, _routing, avg, casualty, enemies, occupied, avgTier,
-                nearestCav);
+            return new FormationSnapshot(f, _count, _routing, avg, casualty, enemies, occupied, avgTier);
         }
 
         /// <summary>
@@ -128,31 +121,6 @@ namespace AnvilAndHammerAI.Detection
             for (int i = 0; i < n; i++)
                 if (_sectorCounts[i] >= MoraleTuning.EncircleMinPerSector) occupied++;
             return occupied;
-        }
-
-        /// <summary>
-        /// 到最近敌"近战骑兵"编队中心的水平距离(冲锋震慑源用)。遍历敌队各编队(≤约16,廉价),
-        /// 仅 IsCavalryFormation(近战冲锋兵种,排除骑射)。无敌骑则返 float.MaxValue。
-        /// </summary>
-        private static float NearestEnemyCavalryDistance(Formation self, Team team)
-        {
-            Mission m = Mission.Current;
-            if (m == null || team == null) return float.MaxValue;
-            Vec2 selfPos = self.CachedAveragePosition;
-            float best = float.MaxValue;
-            foreach (Team t in m.Teams)
-            {
-                if (t == null || !team.IsEnemyOf(t)) continue;
-                foreach (Formation ef in t.FormationsIncludingEmpty)
-                {
-                    if (ef.CountOfUnits == 0) continue;
-                    var eqs = ef.QuerySystem;
-                    if (eqs == null || !eqs.IsCavalryFormation) continue;
-                    float d = selfPos.Distance(ef.CachedAveragePosition);
-                    if (d < best) best = d;
-                }
-            }
-            return best;
         }
     }
 }
