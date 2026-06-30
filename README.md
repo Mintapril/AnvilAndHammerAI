@@ -17,10 +17,13 @@ It is built to run **on top of [RBM (Realistic Battle Mod)](https://www.nexusmod
 - **Coordinated cavalry, not a blind charge.** The infantry *anvil* pins the enemy line; your cavalry *hammer* is held back until the moment is right, then committed into the flank and rear of the enemy formation that is closest to breaking.
 - **It chooses where to strike.** The mod reads the whole enemy line, finds the weakest or most exposed formation as the breakthrough point, and aims the encirclement there — instead of everyone charging the nearest blob.
 - **Seven roles, one plan.** Every soldier is sorted into one of seven coordinated formations — main infantry, flanking infantry, archers, horse archers, left and right light cavalry, and heavy cavalry — each with its own job.
+- **Focused volleys.** Each archer and horse-archer formation concentrates its fire on a *single* enemy formation — the breakthrough point — instead of every archer picking its own target, so arrows actually stack up where it matters.
 - **Formation-level morale.** Units don't just bleed men one at a time; whole formations accumulate shock and **rout together** under sustained pressure — taking casualties, being surrounded, watching neighbours flee, standing under arrow fire, or facing a cavalry charge. Higher-tier troops hold out longer.
+- **Rout in good order.** A broken formation falls back *together*, back to the enemy (and takes extra damage for turning tail), rather than instantly scattering — and can rally and rejoin the fight once the pressure lifts. Only a unit that has broken one time too many collapses for good and scatters.
 - **Formations react to threats.** Caught off guard, a unit will brace into a shield wall, fall back, or counter-charge instead of standing still and dying.
-- **Direction matters.** Hits to the flank and rear deal more damage, each role moves at its own tuned speed, and heavy cavalry plows through enemies on the charge.
-- **Morale at a glance.** Hold **Alt** and each formation's marker icon fills with its team colour in proportion to its remaining morale; the spent portion greys out. An optional setting keeps the markers on screen permanently, no Alt required.
+- **Direction matters.** Hits to the flank and rear deal more damage, each role moves at its own tuned speed, ranged weapons hit a little softer, and heavy cavalry plows through enemies on the charge.
+- **Morale at a glance.** Hold **Alt** and each formation's marker icon fills with its team colour in proportion to its remaining morale; the spent portion greys out, and a **routing** formation's icon **pulses** so a collapse is obvious at a glance. Flanking-infantry and heavy-cavalry icons are tinted **gold** to mark your hammer. An optional setting keeps the markers on screen permanently, no Alt required.
+- **See your arrows fly.** Every arrow, bolt and javelin leaves a light-grey trail along its flight path, kept clearly visible from the zoomed-out / RTS-camera overview — where the vanilla trail vanishes. Shown in the free/RTS camera and hidden while you're controlling your own character.
 - **Both sides — or just yours.** By default the enemy AI fights with the same brain, so battles stay symmetric. A setting can restrict the cavalry/command layer to your army only. (Morale always applies to both sides.)
 - **Tune everything** from the in-game Mod Options (MCM) menu.
 
@@ -72,9 +75,10 @@ Harmony → ButterLib → UIExtenderEx → MCM → RBM → Anvil & Hammer
 Open **Options → Mod Options → Anvil & Hammer** in-game. Settings are grouped:
 
 - **General** — master on/off, and scope (drive the *whole battle* vs. *your army only*).
-- **Battle Display** — show morale on the formation-marker icons; keep the markers always visible without holding Alt.
-- **Morale** — rout threshold, how fast accumulated pressure fades, and which pressure sources are active (e.g. ranged fire, cavalry-charge shock).
-- **Damage & Speed** — directional (flank/rear) damage multipliers and per-role movement-speed multipliers.
+- **Battle Display** — show morale on the formation-marker icons; keep the markers always visible without holding Alt; show a trail on every arrow in flight.
+- **Rout & Rally / Fracture on Repeated Routs** — how long a routed unit takes to rally and the morale it recovers to, and how each rout makes a unit more brittle until it breaks for good.
+- **Morale** — rout threshold, how fast accumulated pressure fades, how strongly being under fire shakes morale, and which pressure sources are active (ranged fire, cavalry-charge shock).
+- **Damage & Speed** — directional (flank/rear) damage multipliers, a ranged-weapon damage multiplier, cavalry-charge impact, and per-role movement-speed multipliers.
 
 Settings apply live; no restart needed for most options (UI/localization changes need a game restart).
 
@@ -84,7 +88,7 @@ Settings apply live; no restart needed for most options (UI/localization changes
 
 > Full architecture & design doc: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the code-grounded source of truth for how the mod works.
 
-The mod is a **weight-setter, not a state machine.** It never seizes formations with `SetControlledByAI`; instead, every 0.5 s it re-asserts the formation behaviour weights it wants, *soft-suppressing* native/RBM tactic selection. RBM keeps running underneath — this mod just keeps the behaviour it chose on top each tick.
+The mod is a **weight-setter, not a state machine.** It never seizes formations with `SetControlledByAI`; instead, every 0.5 s it re-asserts the formation behaviour weights it wants and **blocks native/RBM from overriding them** on the formations it actually drives (formations it doesn't drive — those you command yourself, or anything outside its scope — are left untouched). RBM keeps running underneath — this mod just keeps the behaviour it chose on top each tick.
 
 Three-stage pipeline:
 
